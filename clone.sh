@@ -1,7 +1,6 @@
 # clone a package from github
 
-package="$1"
-[ "$package" ] || { echo "usage: $0 <package>"; exit 1; }
+package="$1"; [ "$package" ] || { echo "usage: $0 <package>"; exit 1; }
 
 [ -d git-templates/$package ] || {
 	echo "error: missing template for '$package'"

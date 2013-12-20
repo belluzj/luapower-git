@@ -2,8 +2,7 @@
 
 set -e # break on first error
 
-package="$1"
-[ "$package" ] || { echo "usage: $0 <package>"; exit 1; }
+package="$1"; [ "$package" ] || { echo "usage: $0 <package>"; exit 1; }
 
 [ -d "git-templates/$package" ] && {
 	echo "error: package '$package' already exists. exiting."
@@ -35,7 +34,9 @@ echo "
 " >> git-templates/$package/info/exclude
 
 mkdir -p git-repos/$package
+
 cd git-repos/$package
+
 git init --template=../../git-templates/$package
 
 echo "Now go tweak git-repos/$package/.git/info/exclude."
