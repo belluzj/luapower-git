@@ -1,0 +1,10 @@
+
+*
+!/obj_parser*
+!/obj_loader*
+
+!/media/
+!/media/obj/
+!/media/obj/**
+
+

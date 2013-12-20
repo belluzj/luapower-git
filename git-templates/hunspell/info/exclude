@@ -1,0 +1,15 @@
+
+*
+!hunspell*
+
+!bin/
+!bin/hunspell*
+
+!linux/bin/
+!linux/bin/libhunspell*
+
+!csrc/
+!csrc/hunspell/**
+
+!media/
+!media/hunspell/**

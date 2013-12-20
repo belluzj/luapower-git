@@ -1,0 +1,10 @@
+
+*
+!/svg_parser*
+!/svg_colors*
+
+!/media/
+!/media/svg/
+!/media/svg/**
+
+

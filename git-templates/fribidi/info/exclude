@@ -1,0 +1,16 @@
+
+*
+!/fribidi*
+
+!/bin/
+!/bin/fribidi*
+
+!/linux/
+!/linux/bin/
+!/linux/bin/*libfribidi*
+
+!/csrc/
+!/csrc/fribidi/
+!/csrc/fribidi/**
+
+

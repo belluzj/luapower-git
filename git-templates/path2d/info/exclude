@@ -1,0 +1,16 @@
+
+*
+!/path*
+
+!/bin/
+!/bin/path*
+
+!/linux/
+!/linux/bin/
+!/linux/bin/*libpath*
+
+!/csrc/
+!/csrc/path/
+!/csrc/path/**
+
+

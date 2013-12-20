@@ -1,0 +1,15 @@
+
+*
+
+!/bin/
+!/bin/struct*
+
+!/linux/
+!/linux/bin/
+!/linux/bin/struct*
+
+!/csrc/
+!/csrc/struct/
+!/csrc/struct/**
+
+

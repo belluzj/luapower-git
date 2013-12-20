@@ -1,0 +1,16 @@
+
+*
+!/oo*
+
+!/bin/
+!/bin/oo*
+
+!/linux/
+!/linux/bin/
+!/linux/bin/*liboo*
+
+!/csrc/
+!/csrc/oo/
+!/csrc/oo/**
+
+

@@ -1,0 +1,16 @@
+
+*
+!/libb64*
+
+!/bin/
+!/bin/b64*
+
+!/linux/
+!/linux/bin/
+!/linux/bin/*libb64*
+
+!/csrc/
+!/csrc/libb64/
+!/csrc/libb64/**
+
+

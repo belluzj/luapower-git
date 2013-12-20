@@ -1,0 +1,15 @@
+
+*
+!/chipmunk*
+
+!/bin/
+!/bin/chipmunk*
+
+!/linux/
+!/linux/bin/
+!/linux/bin/*chipmunk*
+
+!/csrc/
+!/csrc/chipmunk/
+!/csrc/chipmunk/**
+

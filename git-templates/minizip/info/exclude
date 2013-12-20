@@ -1,0 +1,14 @@
+
+*
+!/minizip*
+
+!/bin/
+!/bin/minizip*
+
+!/linux/
+!/linux/bin/
+!/linux/bin/*minizip*
+
+!/csrc/
+!/csrc/minizip/
+!/csrc/minizip/**

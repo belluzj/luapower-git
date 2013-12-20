@@ -1,0 +1,11 @@
+
+*
+!/amanithvg*
+
+!/bin/
+!/bin/*amanithvg*
+
+!/csrc/
+!/csrc/amanithvg/
+!/csrc/amanithvg/**
+

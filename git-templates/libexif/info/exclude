@@ -1,0 +1,16 @@
+
+*
+!/libexif*
+
+!/bin/
+!/bin/exif*
+
+!/linux/
+!/linux/bin/
+!/linux/bin/*libexif*
+
+!/csrc/
+!/csrc/libexif/
+!/csrc/libexif/**
+
+

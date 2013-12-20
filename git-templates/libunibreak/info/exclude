@@ -1,0 +1,16 @@
+
+*
+!/libunibreak*
+
+!/bin/
+!/bin/libunibreak*
+
+!/linux/
+!/linux/bin/
+!/linux/bin/*liblibunibreak*
+
+!/csrc/
+!/csrc/libunibreak/
+!/csrc/libunibreak/**
+
+

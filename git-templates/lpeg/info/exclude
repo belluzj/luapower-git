@@ -1,0 +1,16 @@
+
+*
+!/lpeg/
+!/lpeg/**
+
+!/bin/
+!/bin/lpeg*
+
+!/linux/
+!/linux/bin/
+!/linux/bin/lpeg*
+
+!/csrc/
+!/csrc/lpeg/
+!/csrc/lpeg/**
+

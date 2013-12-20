@@ -1,0 +1,16 @@
+
+*
+!/fbclient*
+
+!/bin/
+!/bin/fbclient*
+
+!/linux/
+!/linux/bin/
+!/linux/bin/*libfbclient*
+
+!/csrc/
+!/csrc/fbclient/
+!/csrc/fbclient/**
+
+

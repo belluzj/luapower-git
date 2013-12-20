@@ -1,0 +1,10 @@
+
+*
+
+!/bin/
+!/bin/glut32*
+
+!/csrc/
+!/csrc/glut32/
+!/csrc/glut32/**
+

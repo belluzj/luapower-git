@@ -1,0 +1,15 @@
+
+*
+
+!/bin/
+!/bin/cjson*
+
+!/linux/
+!/linux/bin/
+!/linux/bin/*cjson*
+
+!/csrc/
+!/csrc/lua-cjson/
+!/csrc/lua-cjson/**
+
+

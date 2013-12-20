@@ -1,0 +1,15 @@
+
+*
+!/md5*
+
+!/bin/
+!/bin/*md5*
+
+!/linux/
+!/linux/bin/
+!/linux/bin/*md5*
+
+!/csrc/
+!/csrc/md5/
+!/csrc/md5/**
+

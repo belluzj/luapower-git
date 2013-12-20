@@ -1,0 +1,12 @@
+
+*
+!cairo*
+
+!bin/
+!bin/cairo*
+
+!linux/
+!linux/bin/libcairo*
+
+!csrc/
+!csrc/cairo/**

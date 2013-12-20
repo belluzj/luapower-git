@@ -1,0 +1,14 @@
+
+*
+
+!/bin/
+!/bin/pixman*
+
+!/linux/
+!/linux/bin/
+!/linux/bin/libpixman*
+
+!/csrc/
+!/csrc/pixman/
+!/csrc/pixman/**
+

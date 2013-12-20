@@ -1,0 +1,15 @@
+
+*
+!/socket**
+
+!/bin/
+!/bin/socket*
+
+!/linux/
+!/linux/bin/
+!/linux/bin/socket*
+
+!/csrc/
+!/csrc/luasocket/
+!/csrc/luasocket/**
+

@@ -1,0 +1,16 @@
+
+*
+!/harfbuzz*
+
+!/bin/
+!/bin/harfbuzz*
+
+!/linux/
+!/linux/bin/
+!/linux/bin/*libharfbuzz*
+
+!/csrc/
+!/csrc/harfbuzz/
+!/csrc/harfbuzz/**
+
+

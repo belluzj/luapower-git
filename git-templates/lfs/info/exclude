@@ -1,0 +1,14 @@
+
+*
+
+!/bin/
+!/bin/lfs*
+
+!/linux/
+!/linux/bin/
+!/linux/bin/lfs*
+
+!/csrc/
+!/csrc/lfs/
+!/csrc/lfs/**
+

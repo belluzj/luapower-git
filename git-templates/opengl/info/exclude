@@ -1,0 +1,8 @@
+
+*
+!/opengl*
+!/gl_*
+!/glu.lua
+!/glut.lua
+!/glu_*.lua
+

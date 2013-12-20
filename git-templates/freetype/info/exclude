@@ -1,0 +1,15 @@
+
+*
+!/freetype*
+
+!/bin/
+!/bin/*freetype*
+
+!/linux/
+!/linux/bin/
+!/linux/bin/libfreetype*
+
+!/csrc/
+!/csrc/freetype/
+!/csrc/freetype/**
+

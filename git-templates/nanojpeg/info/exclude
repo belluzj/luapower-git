@@ -1,0 +1,16 @@
+
+*
+!/nanojpeg*
+
+!/bin/
+!/bin/nanojpeg*
+
+!/linux/
+!/linux/bin/
+!/linux/bin/*libnanojpeg*
+
+!/csrc/
+!/csrc/nanojpeg/
+!/csrc/nanojpeg/**
+
+

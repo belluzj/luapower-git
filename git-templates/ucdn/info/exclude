@@ -1,0 +1,16 @@
+
+*
+!/ucdn*
+
+!/bin/
+!/bin/ucdn*
+
+!/linux/
+!/linux/bin/
+!/linux/bin/*libucdn*
+
+!/csrc/
+!/csrc/harfbuzz-ucdn/
+!/csrc/harfbuzz-ucdn/**
+
+

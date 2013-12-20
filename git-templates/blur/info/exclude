@@ -1,0 +1,15 @@
+
+*
+!/*blur*
+
+!/bin/
+!/bin/*blur*
+
+!/linux/
+!/linux/bin/
+!/linux/bin/*blur*
+
+!/csrc/
+!/csrc/*blur/
+!/csrc/*blur/**
+

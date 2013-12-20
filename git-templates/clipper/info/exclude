@@ -1,0 +1,15 @@
+
+*
+!/clipper*
+
+!/bin/
+!/bin/clipper*
+
+!/linux/
+!/linux/bin/
+!/linux/bin/*clipper*
+
+!/csrc/
+!/csrc/clipper/
+!/csrc/clipper/**
+

@@ -1,0 +1,17 @@
+
+*
+!/lanes*
+
+!/bin/
+!/bin/lanes/
+!/bin/lanes/**
+
+!/linux/
+!/linux/bin/
+!/linux/bin/lanes/
+!/linux/bin/lanes/**
+
+!/csrc/
+!/csrc/lanes/
+!/csrc/lanes/**
+

@@ -1,0 +1,8 @@
+
+*
+!/bitmap*
+
+!/media/
+!/media/bmp/
+!/media/bmp/**
+

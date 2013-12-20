@@ -1,0 +1,15 @@
+
+*
+!/expat*
+
+!/bin/
+!/bin/expat*
+
+!/linux/
+!/linux/bin/
+!/linux/bin/*expat*
+
+!/csrc/
+!/csrc/expat/
+!/csrc/expat/**
+

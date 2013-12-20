@@ -1,0 +1,14 @@
+
+*
+!/genx*
+
+!/bin/
+!/bin/genx*
+
+!/linux/
+!/linux/bin/
+!/linux/bin/*genx*
+
+!/csrc/
+!/csrc/genx/
+!/csrc/genx/**

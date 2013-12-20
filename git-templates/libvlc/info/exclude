@@ -1,0 +1,11 @@
+
+*
+!/vlc*
+
+!/bin/
+!/bin/libvlc*
+
+!/csrc/
+!/csrc/libvlc/
+!/csrc/libvlc/**
+

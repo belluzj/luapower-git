@@ -1,0 +1,15 @@
+
+*
+!/mysql*
+
+!/bin/
+!/bin/libmysql*
+
+!/linux/
+!/linux/bin/
+!/linux/bin/libmysql*
+
+!/csrc/
+!/csrc/mysql/
+!/csrc/mysql/**
+
