@@ -3,11 +3,11 @@
 !/giflib*
 
 !/bin/
-!/bin/giflib*
+!/bin/gif*
 
 !/linux/
 !/linux/bin/
-!/linux/bin/giflib*
+!/linux/bin/libgif*
 
 !/csrc/
 !/csrc/giflib/

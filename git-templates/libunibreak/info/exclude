@@ -3,11 +3,11 @@
 !/libunibreak*
 
 !/bin/
-!/bin/libunibreak*
+!/bin/unibreak*
 
 !/linux/
 !/linux/bin/
-!/linux/bin/*liblibunibreak*
+!/linux/bin/libunibreak*
 
 !/csrc/
 !/csrc/libunibreak/

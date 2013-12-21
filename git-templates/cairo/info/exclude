@@ -6,7 +6,9 @@
 !bin/cairo*
 
 !linux/
+!linux/bin/
 !linux/bin/libcairo*
 
 !csrc/
+!csrc/cairo/
 !csrc/cairo/**

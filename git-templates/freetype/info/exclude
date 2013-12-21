@@ -3,7 +3,7 @@
 !/freetype*
 
 !/bin/
-!/bin/*freetype*
+!/bin/freetype*
 
 !/linux/
 !/linux/bin/
@@ -12,4 +12,8 @@
 !/csrc/
 !/csrc/freetype/
 !/csrc/freetype/**
+
+!/media/
+!/media/fonts/
+!/media/fonts/**
 

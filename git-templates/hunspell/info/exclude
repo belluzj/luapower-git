@@ -5,11 +5,14 @@
 !bin/
 !bin/hunspell*
 
+!linux/
 !linux/bin/
 !linux/bin/libhunspell*
 
 !csrc/
+!csrc/hunspell/
 !csrc/hunspell/**
 
 !media/
+!media/hunspell/
 !media/hunspell/**

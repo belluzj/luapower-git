@@ -3,7 +3,7 @@
 !/libjpeg*
 
 !/bin/
-!/bin/libjpeg*
+!/bin/jpeg*
 
 !/linux/
 !/linux/bin/

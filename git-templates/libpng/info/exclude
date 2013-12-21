@@ -3,11 +3,11 @@
 !/libpng*
 
 !/bin/
-!/bin/libpng*
+!/bin/png*
 
 !/linux/
 !/linux/bin/
-!/linux/bin/*libpng*
+!/linux/bin/libpng*
 
 !/csrc/
 !/csrc/libpng/
