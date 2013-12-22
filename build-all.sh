@@ -1,6 +1,5 @@
 # some packages depend upon one another at the binary level,
 # that's why we hardcode the compilation list. we don't have time for fancy dep trees.
-
 packages="\
 md5
 sha2
@@ -30,11 +29,16 @@ cairo
 harfbuzz-ucdn
 harfbuzz"
 
-cd ../lua-files/csrc
+platform="$1"
+[ "$platform" ] || {
+	echo "usage: $0 <platform>"
+	echo "       platforms: mingw32, linux32"
+	exit 1
+}
+
 for package in $packages; do
 	echo " ~~~~ $package ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ "
-	pushd $package
-	./build-mingw32.sh || exit 1
-	popd
+	./build.sh $package "$platform" || exit 1
 done
 
+./upx-all.sh
