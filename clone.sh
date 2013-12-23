@@ -2,17 +2,16 @@
 
 package="$1"; [ "$package" ] || { echo "usage: $0 <package>"; exit 1; }
 
-[ -d git-templates/$package ] || {
-	echo "error: missing template for '$package'"
-	exit 1
-}
-
-[ -d git-repos/$package ] && {
+[ -d git-repos/$package/.git ] && {
 	echo "error: repo dir already exists for '$package'"
 	exit 1
 }
 
-git clone ssh://git@github.com/capr/$package \
-	--template=git-templates/$package --no-checkout git-repos/$package
+url=ssh://git@github.com/capr/$package.git
+#url=https://capr@github.com/capr/$package.git  # use this if you don't have a ssh key
+
+mkdir -p ../lua-files
+
+git clone $url --template=git-templates/$package --no-checkout git-repos/$package
 
 git --git-dir=git-repos/$package/.git checkout

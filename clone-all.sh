@@ -1,5 +1,5 @@
 # clone all projects from github
 
-for package in `./list.sh`; do
+for package in `./packages.sh`; do
 	./clone.sh $package
 done

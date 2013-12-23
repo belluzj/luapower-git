@@ -39,4 +39,5 @@ cd git-repos/$package
 
 git init --template=../../git-templates/$package
 
+echo "Package created with files from ../lua-files/$package."
 echo "Now go tweak git-repos/$package/.git/info/exclude."

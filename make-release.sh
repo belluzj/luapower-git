@@ -1,6 +1,7 @@
-# clone all projects from github
+# fetch & merge all projects into the release repo
 
 export HOME="$USERPROFILE"
+
 release_dir=../lua-files-release
 repos_dir=../lua-files-git/git-repos # relative to release_dir
 
@@ -17,7 +18,7 @@ repos_dir=../lua-files-git/git-repos # relative to release_dir
 	)
 }
 
-packages="$(./list.sh)"
+packages="$(./packages.sh)"
 cd "$release_dir"
 for package in $packages; do
 	[ "$(git remote | grep $package)" ] || {
