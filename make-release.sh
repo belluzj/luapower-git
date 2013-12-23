@@ -28,3 +28,5 @@ for package in $packages; do
 	git fetch $package
 	git merge $package/master
 done
+
+git push

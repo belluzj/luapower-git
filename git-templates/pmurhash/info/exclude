@@ -1,0 +1,16 @@
+
+*
+!/pmurhash*
+
+!/bin/
+!/bin/pmurhash*
+
+!/linux/
+!/linux/bin/
+!/linux/bin/libpmurhash*
+
+!/csrc/
+!/csrc/pmurhash/
+!/csrc/pmurhash/**
+
+

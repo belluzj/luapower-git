@@ -1,0 +1,16 @@
+
+*
+!/murmurhash3*
+
+!/bin/
+!/bin/murmurhash3*
+
+!/linux/
+!/linux/bin/
+!/linux/bin/libmurmurhash3*
+
+!/csrc/
+!/csrc/murmurhash3/
+!/csrc/murmurhash3/**
+
+
