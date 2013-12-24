@@ -1,0 +1,16 @@
+
+*
+!/hpdf*
+
+!/bin/
+!/bin/hpdf*
+
+!/linux/
+!/linux/bin/
+!/linux/bin/libhpdf*
+
+!/csrc/
+!/csrc/hpdf/
+!/csrc/hpdf/**
+
+
