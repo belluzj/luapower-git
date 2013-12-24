@@ -1,14 +1,14 @@
-# fetch & merge all projects into the release repo
+# fetch & merge all projects into the bundle repo
 
 export HOME="$USERPROFILE"
 
-release_dir=../lua-files-release
-repos_dir=../lua-files-git/git-repos # relative to release_dir
+bundle_dir=../lua-files-bundle
+repos_dir=../lua-files-git/git-repos # relative to bundle_dir
 
-[ -d "$release_dir" ] || {
-	mkdir -p "$release_dir"
+[ -d "$bundle_dir" ] || {
+	mkdir -p "$bundle_dir"
 	(
-		cd "$release_dir"
+		cd "$bundle_dir"
 		git init
 		echo "" > .gitignore
 		git add .gitignore
@@ -19,7 +19,7 @@ repos_dir=../lua-files-git/git-repos # relative to release_dir
 }
 
 packages="$(./packages.sh)"
-cd "$release_dir"
+cd "$bundle_dir"
 for package in $packages; do
 	[ "$(git remote | grep ^$package\$)" ] || {
 		git remote add $package \
