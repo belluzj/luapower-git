@@ -1,10 +1,12 @@
-
 *
-
 !/bin/
-!/bin/glut32*
-
 !/csrc/
+!/bin/mingw32/
+!/bin/linux32/
+!/media/
+
+!/bin/mingw32/glut32*
+!/bin/linux32/libglut32*
 !/csrc/glut32/
 !/csrc/glut32/**
 

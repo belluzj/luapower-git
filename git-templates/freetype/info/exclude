@@ -1,19 +1,15 @@
-
 *
-!/freetype*
-
 !/bin/
-!/bin/freetype*
-
-!/linux/
-!/linux/bin/
-!/linux/bin/libfreetype*
-
 !/csrc/
+!/bin/mingw32/
+!/bin/linux32/
+!/media/
+
+!/freetype*
+!/bin/mingw32/freetype*
+!/bin/linux32/libfreetype*
 !/csrc/freetype/
 !/csrc/freetype/**
-
-!/media/
 !/media/fonts/
 !/media/fonts/**
 

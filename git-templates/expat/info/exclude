@@ -1,15 +1,13 @@
-
 *
-!/expat*
-
 !/bin/
-!/bin/expat*
-
-!/linux/
-!/linux/bin/
-!/linux/bin/*expat*
-
 !/csrc/
+!/bin/mingw32/
+!/bin/linux32/
+!/media/
+
+!/expat*
+!/bin/mingw32/expat*
+!/bin/linux32/libexpat*
 !/csrc/expat/
 !/csrc/expat/**
 

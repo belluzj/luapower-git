@@ -1,16 +1,8 @@
-
 *
-!/tuple*
-
 !/bin/
-!/bin/tuple*
-
-!/linux/
-!/linux/bin/
-!/linux/bin/*libtuple*
-
 !/csrc/
-!/csrc/tuple/
-!/csrc/tuple/**
+!/bin/mingw32/
+!/bin/linux32/
+!/media/
 
-
+!/tuple*

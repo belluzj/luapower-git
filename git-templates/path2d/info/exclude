@@ -1,16 +1,8 @@
-
 *
-!/path*
-
 !/bin/
-!/bin/path*
-
-!/linux/
-!/linux/bin/
-!/linux/bin/*libpath*
-
 !/csrc/
-!/csrc/path/
-!/csrc/path/**
+!/bin/mingw32/
+!/bin/linux32/
+!/media/
 
-
+!/path*

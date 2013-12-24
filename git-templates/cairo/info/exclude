@@ -1,14 +1,12 @@
-
 *
-!cairo*
+!/bin/
+!/csrc/
+!/bin/mingw32/
+!/bin/linux32/
+!/media/
 
-!bin/
-!bin/cairo*
-
-!linux/
-!linux/bin/
-!linux/bin/libcairo*
-
-!csrc/
-!csrc/cairo/
-!csrc/cairo/**
+!/cairo*
+!/bin/mingw32/cairo*
+!/bin/linux32/libcairo*
+!/csrc/cairo/
+!/csrc/cairo/**

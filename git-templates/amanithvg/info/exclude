@@ -1,11 +1,11 @@
-
 *
-!/amanithvg*
-
 !/bin/
-!/bin/*amanithvg*
-
 !/csrc/
+!/bin/mingw32/
+!/bin/linux32/
+!/media/
+
+!/amanithvg*
+!/bin/mingw32/libAmanithVG*
 !/csrc/amanithvg/
 !/csrc/amanithvg/**
-

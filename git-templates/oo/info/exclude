@@ -1,16 +1,8 @@
-
 *
-!/oo*
-
 !/bin/
-!/bin/oo*
-
-!/linux/
-!/linux/bin/
-!/linux/bin/*liboo*
-
 !/csrc/
-!/csrc/oo/
-!/csrc/oo/**
+!/bin/mingw32/
+!/bin/linux32/
+!/media/
 
-
+!/oo*
