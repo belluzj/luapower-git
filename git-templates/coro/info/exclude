@@ -1,4 +1,8 @@
-
 *
-!coro*
+!/bin/
+!/csrc/
+!/bin/mingw32/
+!/bin/linux32/
+!/media/
 
+!/coro*

@@ -1,8 +1,12 @@
-
 *
+!/bin/
+!/csrc/
+!/bin/mingw32/
+!/bin/linux32/
+!/media/
+
 !/opengl*
 !/gl_*
 !/glu.lua
 !/glut.lua
 !/glu_*.lua
-

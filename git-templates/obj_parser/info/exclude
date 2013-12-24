@@ -1,10 +1,11 @@
-
 *
+!/bin/
+!/csrc/
+!/bin/mingw32/
+!/bin/linux32/
+!/media/
+
 !/obj_parser*
 !/obj_loader*
-
-!/media/
 !/media/obj/
 !/media/obj/**
-
-

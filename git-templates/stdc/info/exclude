@@ -1,5 +1,10 @@
-
 *
+!/bin/
+!/csrc/
+!/bin/mingw32/
+!/bin/linux32/
+!/media/
+
 !/ctypes*
 !/stdlib*
 !/stdio*

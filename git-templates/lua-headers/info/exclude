@@ -1,6 +1,10 @@
-
 *
+!/bin/
+!/csrc/
+!/bin/mingw32/
+!/bin/linux32/
+!/media/
+
 !/csrc/
 !/csrc/lua/
 !/csrc/lua/**
-

@@ -1,8 +1,10 @@
-
 *
-!/bitmap*
-
+!/bin/
+!/csrc/
+!/bin/mingw32/
+!/bin/linux32/
 !/media/
+
+!/bitmap*
 !/media/bmp/
 !/media/bmp/**
-
