@@ -18,16 +18,15 @@ echo "\
 
 echo "
 *
-!/$package*
-
 !/bin/
-!/bin/$package*
-
-!/linux/
-!/linux/bin/
-!/linux/bin/lib$package*
-
 !/csrc/
+!/bin/mingw32/
+!/bin/linux32/
+!/media/
+
+!/$package*
+!/bin/mingw32/$package*
+!/bin/linux32/lib$package*
 !/csrc/$package/
 !/csrc/$package/**
 
