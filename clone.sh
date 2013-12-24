@@ -2,10 +2,7 @@
 
 package="$1"; [ "$package" ] || { echo "usage: $0 <package>"; exit 1; }
 
-[ -d git-repos/$package/.git ] && {
-	echo "error: repo dir already exists for '$package'"
-	exit 1
-}
+[ -d git-repos/$package/.git ] && exit 1
 
 url=ssh://git@github.com/capr/$package.git
 #url=https://capr@github.com/capr/$package.git  # use this if you don't have a ssh key

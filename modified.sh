@@ -1,5 +1,5 @@
 # show the status of all cloned packages
 
 for package in `./packages.sh`; do
-	(cd "git-repos/$package" && git status -s)
+	./git.sh $package status -s
 done
