@@ -17,7 +17,7 @@ but git repositories work in their own separate directories by default.
 
 	mkdir lua-files
 	cd lua-files
-	git clone ssh://git@github.com/capr/lua-files/git _git
+	git clone ssh://git@github.com/capr/lua-files-git _git
 	cd _git
 	sh clone.sh <package1>
 	sh clone.sh <package2>
