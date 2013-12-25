@@ -15,6 +15,7 @@ url="ssh://git@github.com/capr/$package.git"
 	cd ../..
 	git --git-dir=_git/$package/.git remote add origin "$url"
 	git --git-dir=_git/$package/.git fetch --all
+	git --git-dir=_git/$package/.git branch -u origin/master
 	cd _git
 }
 
