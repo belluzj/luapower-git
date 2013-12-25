@@ -1,12 +1,13 @@
+# git add, commit and push all repos
 
 export HOME="$USERPROFILE"
 
 for package in `./packages.sh`; do
-	(
-		echo " ~~~ $package ~~~ "
-		cd git-repos/$package
-		git add -A
-		git commit -m "added binaries back to their right paths"
-		git push
-	)
+	echo " ~~~ $package ~~~ "
+	cd ..
+	git --git-dir=_git/$package/.git add -A
+	git --git-dir=_git/$package/.git commit -m "upgrade"
+	[ "$(git --git-dir=_git/$package/.git rev-list HEAD...origin/master --count)" != "0" ] && \
+		git --git-dir=_git/$package/.git push
+	cd _git
 done
