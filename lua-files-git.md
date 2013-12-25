@@ -30,11 +30,11 @@ They all share the same `work-tree` which is `lua-files`,
 but they maintain a separate `git-dir`, at `_git/<package>/.git`.
 Git commands can be invoked from the work-tree by passing `--git-dir=_git/<package>/.git`.
 Some (but not all) git commands can also be invoked from `_git/<package>` without the need
-to pass additional options.
+to pass additional options, but it's preferable to invoke git from the work-tree with `--git-dir`.
 
------------------------------------- ------------------------------------
-./packages.sh                        list packages
-./clone.sh <package>                 clone a package in the parent dir
-./clone-all.sh                       clone all packages
------------------------------------- ------------------------------------
+--------------------------- ------------------------------------
+./packages.sh               list packages
+./clone.sh <package>        clone a package in the parent dir
+./clone-all.sh              clone all packages
+--------------------------- ------------------------------------
 
