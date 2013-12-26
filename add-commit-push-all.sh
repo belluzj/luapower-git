@@ -1,6 +1,6 @@
 # git add, commit and push all repos
 
-export HOME="$USERPROFILE"
+[ "$HOME"] || export HOME="$USERPROFILE"
 
 for package in `./packages.sh`; do
 	echo " ~~~ $package ~~~ "
