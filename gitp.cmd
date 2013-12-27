@@ -1,1 +1,1 @@
-@sh gitp.sh %*
+@sh gitp %*

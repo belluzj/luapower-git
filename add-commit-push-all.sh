@@ -2,12 +2,15 @@
 
 [ "$HOME"] || export HOME="$USERPROFILE"
 
+gitp() { git --git-dir=_git/$package/.git "$@"; }
+
 for package in `./packages.sh`; do
 	echo " ~~~ $package ~~~ "
 	cd ..
-	git --git-dir=_git/$package/.git add -A
-	git --git-dir=_git/$package/.git commit -m "upgrade"
-	[ "$(git --git-dir=_git/$package/.git rev-list HEAD...origin/master --count)" != "0" ] && \
-		git --git-dir=_git/$package/.git push
+	gitp add -A
+	gitp commit -m "upgrade"
+	# gitp tag -f `gitp describe --abbrev=0 --tags`
+	[ "$(gitp rev-list HEAD...origin/master --count)" != "0" ] && \
+		gitp push
 	cd _git
 done
