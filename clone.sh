@@ -1,4 +1,4 @@
-# clone (or just pull) a package from github
+# clone (or just pull) a package from github with --git-dir=$package/.git and --worktree=..
 
 package="$1"; [ "$package" ] || { echo "usage: $0 <package>" >&2; exit 1; }
 
