@@ -1,7 +1,0 @@
-# git wrapper to be put in PATH, that can be called from a git-dir, but which
-# actually runs git from the project's work-tree with --git-dir option.
-
-[ "$HOME" ] || export HOME="$USERPROFILE"
-
-gitdir="$PWD"
-cd ../.. && git --git-dir="$gitdir/.git" "$@"
