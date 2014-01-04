@@ -1,1 +1,1 @@
-@call sh ./untracked %*
+@call sh ./untracked.sh %*

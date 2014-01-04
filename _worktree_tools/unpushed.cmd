@@ -1,15 +1,6 @@
 @echo off
 rem check unpushed files in all projects
 
-:begin
-	for /F "tokens=* delims= " %%p in ('proj') do call :count %%p
-goto end
-
-:count
-	set _PROJECT=%PROJECT%
-	set PROJECT=%1
-		for /f "delims=" %%i in ('git rev-list HEAD...origin/master --count') do if not "%%i" == "0" echo %PROJECT%
-	set PROJECT=%_PROJECT%
-goto end
-
-:end
+for /F "tokens=* delims= " %%p in ('proj') do ^
+for /f "delims=" %%i in ('git --git-dir=_git/%%p/.git rev-list HEAD...origin/master --count') do ^
+if not "%%i" == "0" echo %%p

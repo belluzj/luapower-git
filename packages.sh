@@ -1,4 +1,3 @@
-#!/bin/sh
-# list all known packages (cloned or uncloned)
+# list all cloned packages
 cd "$(dirname "$0")"
-for f in *.exclude; do echo "${f%.exclude}"; done
+for f in *; do [ -d "$f/.git" ] && echo "$f"; done

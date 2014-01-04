@@ -1,10 +1,8 @@
 #!/bin/sh
 # show untracked files in all projects
 
-packages="$(_git/packages.sh)"
-
 tracked_files() {
-	for project in $packages; do
+	for project in `./proj.sh`; do
 		git --git-dir=_git/$project/.git ls-files
 	done | sort | uniq -u
 }
