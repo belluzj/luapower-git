@@ -1,9 +1,12 @@
-#/bin/sh
+#!/bin/sh
 # set git wrapper to track a project, or list projects
 
 [ "$1" ] || { _git/packages.sh; exit; }
 
 export PROJECT="$1"
+# TODO: test git with `export GIT_DIR="$(dirname "$0")/_git/$PROJECT/.git"`
+# to see if we can remove the git wrapper which would allow us to type git instead of ./git.
+# alternatively, run bash with --rcfile <(echo "alias git=git --git-dir=...").
 ./git ls-files
 [ "$PS1" ] || PS1="\\w \\$ "
 PS1="[$PROJECT] $PS1" bash -i

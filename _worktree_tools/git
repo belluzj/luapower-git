@@ -1,4 +1,4 @@
-#/bin/sh
+#!/bin/sh
 # run it with --git-dir
 
 [ "$PROJECT" ] || {
