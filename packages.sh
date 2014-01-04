@@ -1,3 +1,4 @@
-# list all known packages
+#!/bin/sh
+# list all known packages (cloned or uncloned)
 cd "$(dirname "$0")"
-ls *.exclude -1 | sed 's/\.exclude//'
+for f in *.exclude; do echo "${f%.exclude}"; done

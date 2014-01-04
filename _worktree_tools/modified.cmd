@@ -1,14 +1,15 @@
 @echo off
 rem check modified files in all projects
 
-set _PROJECT=%PROJECT%
+:begin
+	for /F "tokens=* delims= " %%p in ('proj') do call :status %%p
+goto end
 
-for /F "tokens=* delims= " %%p in ('proj') do call :loopbody %%p
-goto :eof
+:status
+	set _PROJECT=%PROJECT%
+	set PROJECT=%1
+		call git status -s
+	set PROJECT=%_PROJECT%
+goto end
 
-:loopbody
-set PROJECT=%1
-call git status -s
-
-:eof
-set PROJECT=%_PROJECT%
+:end

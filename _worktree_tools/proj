@@ -1,7 +1,7 @@
 #!/bin/sh
 # set git wrapper to track a project, or list projects
 
-[ "$1" ] || { _git/packages.sh; exit; }
+[ "$1" ] || { _git/cloned-packages.sh; exit; }
 
 export PROJECT="$1"
 # TODO: test git with `export GIT_DIR="$(dirname "$0")/_git/$PROJECT/.git"`
