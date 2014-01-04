@@ -1,0 +1,11 @@
+#/bin/sh
+# run it with --git-dir
+
+[ "$PROJECT" ] || {
+	echo "not tracking any project."
+	echo "type `proj <project>` first to track a project."
+	echo "type `proj` to list all projects."
+	exit 1
+}
+
+exec git --git-dir="$(dirname "$0")/_git/$PROJECT/.git" "$@"

@@ -1,0 +1,9 @@
+#/bin/sh
+# set git wrapper to track a project, or list projects
+
+[ "$1" ] || { _git/packages.sh; exit; }
+
+export PROJECT="$1"
+./git ls-files
+[ "$PS1" ] || PS1="\\w \\$ "
+PS1="[$PROJECT] $PS1" bash -i
