@@ -7,12 +7,11 @@
 
 [ "$1" ] || {
 	cd _git && for f in *; do [ -d "$f/.git" ] && echo "$f"; done
-	exit
+	exit 0
 }
 
 export GIT_DIR="_git/$1/.git"
 echo "tracking $1"
-echo "------------------"
-git ls-files
+git status -s
 echo
 PS1="[$1] $PS1" bash -i

@@ -5,6 +5,8 @@
 !/bin/linux32/
 !/media/
 
+!/luajit*
+
 !/bin/mingw32/luajit*
 !/bin/mingw32/lua51*
 !/bin/mingw32/lua/

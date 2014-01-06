@@ -5,6 +5,7 @@
 !/bin/linux32/
 !/media/
 
+!/lfs*
 !/bin/mingw32/lfs*
 !/bin/linux32/lfs*
 !/csrc/lfs/

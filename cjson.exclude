@@ -5,6 +5,7 @@
 !/bin/linux32/
 !/media/
 
+!/cjson*
 !/bin/mingw32/cjson*
 !/bin/linux32/cjson*
 !/csrc/cjson/

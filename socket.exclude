@@ -5,7 +5,9 @@
 !/bin/linux32/
 !/media/
 
-!/socket**
+!/socket*
+!/socket/
+!/socket/**
 !/bin/mingw32/socket*
 !/bin/linux32/socket*
 !/csrc/socket/

@@ -7,9 +7,8 @@ if [%1] == [] goto list_projects else goto set_project
 :set_project
 	set GIT_DIR=_git/%1/.git
 	echo tracking %1
-	echo ------------------
 	prompt [%1] $P$G
-	call git ls-files
+	call git status -s
 goto end
 
 :list_projects

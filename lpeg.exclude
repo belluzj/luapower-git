@@ -5,6 +5,7 @@
 !/bin/linux32/
 !/media/
 
+!/lpeg*
 !/lpeg/
 !/lpeg/**
 !/bin/mingw32/lpeg*

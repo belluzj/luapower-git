@@ -5,6 +5,7 @@
 !/bin/linux32/
 !/media/
 
+!/struct*
 !/bin/mingw32/struct*
 !/bin/linux32/struct*
 !/csrc/struct/
