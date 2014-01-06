@@ -14,6 +14,8 @@ echo "\
 !/media/
 
 !/$package*
+!/$package/
+!/$package/**
 !/bin/mingw32/$package*
 !/bin/linux32/lib$package*
 !/csrc/$package/
