@@ -5,18 +5,18 @@
 !/bin/linux32/
 !/media/
 
-!/strict.lua
-
 !/bin/mingw32/luajit*
 !/bin/mingw32/lua51*
 !/bin/mingw32/lua/
 !/bin/mingw32/lua/jit/
 !/bin/mingw32/lua/jit/**
+!/bin/mingw32/lua/strict.lua
 
 !/bin/linux32/luajit*
 !/bin/linux32/lua/
 !/bin/linux32/lua/jit/
 !/bin/linux32/lua/jit/**
+!/bin/linux32/lua/strict.lua
 
 !/csrc/luajit/
 !/csrc/luajit/**

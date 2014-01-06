@@ -8,5 +8,5 @@
 !/socket**
 !/bin/mingw32/socket*
 !/bin/linux32/socket*
-!/csrc/luasocket/
-!/csrc/luasocket/**
+!/csrc/socket/
+!/csrc/socket/**

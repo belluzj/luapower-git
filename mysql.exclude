@@ -8,5 +8,5 @@
 !/mysql*
 !/bin/mingw32/libmysql*
 !/bin/linux32/libmysql*
-!/csrc/libmysql/
-!/csrc/libmysql/**
+!/csrc/mysql/
+!/csrc/mysql/**

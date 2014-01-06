@@ -5,7 +5,7 @@
 !/bin/linux32/
 !/media/
 
-!/vlc*
+!/libvlc*
 !/bin/mingw32/libvlc*
 !/bin/linux32/libvlc*
 !/csrc/libvlc/

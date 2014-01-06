@@ -8,7 +8,7 @@
 !/libjpeg*
 !/bin/mingw32/jpeg*
 !/bin/linux32/libjpeg*
-!/csrc/libjpegturbo/
-!/csrc/libjpegturbo/**
+!/csrc/libjpeg/
+!/csrc/libjpeg/**
 !/media/jpeg/
 !/media/jpeg/**
