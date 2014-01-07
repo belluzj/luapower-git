@@ -1,6 +1,7 @@
 # clone (or just pull) a package from github with --git-dir=$package/.git and --worktree=..
 
 package="$1"; [ "$package" ] || { echo "usage: $0 <package>" >&2; exit 1; }
+[ -f "$package.exclude" ] || { echo "unknown package $package" >&2; exit 1; }
 
 url="ssh://git@github.com/luapower/$package.git"
 # use this if you don't have a ssh key
