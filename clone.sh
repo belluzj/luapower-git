@@ -2,9 +2,9 @@
 
 package="$1"; [ "$package" ] || { echo "usage: $0 <package>" >&2; exit 1; }
 
-url="ssh://git@github.com/capr/$package.git"
+url="ssh://git@github.com/luapower/$package.git"
 # use this if you don't have a ssh key
-# url="https://capr@github.com/capr/$package.git"
+# url="https://github.com/luapower/$package.git"
 
 [ -d $package/.git ] || {
 	mkdir -p $package
