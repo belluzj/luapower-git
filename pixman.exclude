@@ -5,6 +5,7 @@
 !/bin/linux32/
 !/media/
 
+!/pixman*
 !/bin/mingw32/pixman*
 !/bin/linux32/libpixman*
 !/csrc/pixman/
