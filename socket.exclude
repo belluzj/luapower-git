@@ -4,11 +4,17 @@
 !/bin/mingw32/
 !/bin/linux32/
 !/media/
+!/bin/mingw32/clib/
+!/bin/linux32/clib/
 
 !/socket*
 !/socket/
 !/socket/**
-!/bin/mingw32/socket*
-!/bin/linux32/socket*
+!/bin/mingw32/clib/socket*
+!/bin/mingw32/clib/socket/
+!/bin/mingw32/clib/socket/**
+!/bin/linux32/clib/socket*
+!/bin/linux32/clib/socket/
+!/bin/linux32/clib/socket/**
 !/csrc/socket/
 !/csrc/socket/**

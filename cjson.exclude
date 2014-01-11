@@ -4,9 +4,11 @@
 !/bin/mingw32/
 !/bin/linux32/
 !/media/
+!/bin/mingw32/clib/
+!/bin/linux32/clib/
 
 !/cjson*
-!/bin/mingw32/cjson*
-!/bin/linux32/cjson*
+!/bin/mingw32/clib/cjson*
+!/bin/linux32/clib/cjson*
 !/csrc/cjson/
 !/csrc/cjson/**

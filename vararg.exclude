@@ -4,8 +4,11 @@
 !/bin/mingw32/
 !/bin/linux32/
 !/media/
+!/bin/mingw32/clib/
+!/bin/linux32/clib/
 
-!/bin/mingw32/vararg*
-!/bin/linux32/vararg*
+!/vararg*
+!/bin/mingw32/clib/vararg*
+!/bin/linux32/clib/vararg*
 !/csrc/vararg/
 !/csrc/vararg/**

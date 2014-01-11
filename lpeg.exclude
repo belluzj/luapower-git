@@ -4,11 +4,13 @@
 !/bin/mingw32/
 !/bin/linux32/
 !/media/
+!/bin/mingw32/clib/
+!/bin/linux32/clib/
 
 !/lpeg*
 !/lpeg/
 !/lpeg/**
-!/bin/mingw32/lpeg*
-!/bin/linux32/lpeg*
+!/bin/mingw32/clib/lpeg*
+!/bin/linux32/clib/lpeg*
 !/csrc/lpeg/
 !/csrc/lpeg/**

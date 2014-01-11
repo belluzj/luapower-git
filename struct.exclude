@@ -4,9 +4,11 @@
 !/bin/mingw32/
 !/bin/linux32/
 !/media/
+!/bin/mingw32/clib/
+!/bin/linux32/clib/
 
 !/struct*
-!/bin/mingw32/struct*
-!/bin/linux32/struct*
+!/bin/mingw32/clib/struct*
+!/bin/linux32/clib/struct*
 !/csrc/struct/
 !/csrc/struct/**
