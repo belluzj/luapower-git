@@ -2,13 +2,12 @@
 rem set git to track a project or to list available projects.
 rem also called from other scripts to get a list all projects.
 
-if [%1] == [] goto list_projects else goto set_project
+if [%1] == [] goto list_projects
 
-:set_project
-	set GIT_DIR=_git/%1/.git
-	echo tracking %1
-	prompt [%1] $P$G
-	call git status -s
+set GIT_DIR=_git/%1/.git
+echo tracking %1
+prompt [%1] $P$G
+call git status -s
 goto end
 
 :list_projects

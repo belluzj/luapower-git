@@ -2,7 +2,6 @@
 # set git wrapper to track a project, or list projects
 
 # mingw doesn't set these
-[ "$HOME" ] || export HOME="$USERPROFILE"
 [ "$PS1" ] || export PS1="\\w \\$ "
 
 [ "$1" ] || {
