@@ -1,3 +1,8 @@
-# ignore all directories except the ones that start with an underscore
-/*/
-!/_*/
+# ignore all files except *.cmd, *.sh, the _git dir and the luapower* module
+
+*
+!/*.cmd
+!/*.sh
+!/_git/
+!/_git/**
+!/luapower*
