@@ -1,2 +1,2 @@
-scripts to be copied to the git work tree and called from there.
+scripts to be copied to the git work tree (i.e. ../..) and called from there.
 makes it easier to work with git when GIT_DIR is separated from the work tree.

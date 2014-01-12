@@ -7,7 +7,6 @@ if exist _git/%1/.git/ goto already_cloned
 
 md _git\%1
 
-(
 set GIT_DIR=_git/%1/.git
 git init
 git config --local core.worktree ../../..
@@ -18,7 +17,8 @@ git config --local --add remote.origin.push  refs/tags/*:refs/tags/*
 git fetch
 git branch --track master origin/master
 git checkout
-)
+
+proj %1
 goto end
 
 
