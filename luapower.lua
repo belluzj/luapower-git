@@ -637,6 +637,10 @@ local function untracked_files()
 			untracked[path] = false
 		end
 	end
+	--trick: tracked_files('..') gets us GIT_DIR `_git/../.git` which is `.git`
+	for path in pairs(tracked_files('..')) do
+		untracked[path] = false
+	end
 	local t = {}
 	for path, untracked in pairs(untracked) do
 		if untracked then
@@ -849,7 +853,6 @@ end
 
 if not ... then
 
-lfs.chdir'..'
 inspect('lfs')
 --inspect_packages()
 multitracked_files()

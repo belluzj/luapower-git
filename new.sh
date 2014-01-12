@@ -3,7 +3,7 @@
 set -e # break on first error
 
 package="$1"; [ "$package" ] || { echo "usage: $0 <package>" >&2; exit 1; }
-[ -f "$package.exclude" ] && { echo "error: package already exists." >&2; exit 1; }
+[ -f "_git/$package.exclude" ] && { echo "$package already exists." >&2; exit 1; }
 
 echo "\
 *
@@ -21,6 +21,6 @@ echo "\
 !/csrc/$package/
 !/csrc/$package/**
 
-" > $package.exclude
+" > _git/$package.exclude
 
 ./clone.sh $package
