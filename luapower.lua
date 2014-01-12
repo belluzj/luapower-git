@@ -4,7 +4,6 @@
 --it also generates and updates the list of packages that is used on luapower.com
 --and the table of contents. the entire API is memoized so it can be abused
 --without worrying about doing multiple calls on the same arguments.
---TODO: Lua/C modules are not detected!
 
 --helpers
 ---------------------------------------------------------------------------
@@ -193,7 +192,7 @@ local function parse_what_file(what_file)
 	return t
 end
 
---path/*.lua -> lua module name
+--path/*.lua -> Lua module name
 local function lua_module_name(path)
 	return path:gsub('/', '.'):match('(.-)%.lua$')
 end
@@ -236,12 +235,9 @@ end
 --check if a path is valid for containing tracked files
 local function is_valid_path(p)
 	return not p or not (
-		p:match'^_'
+		(p:match'^_' and not p:match'^_git/') --reserve _* for external stuff
 		or p:match'^%.git/'
 		or p:match'/%.git/'
-		--TODO: remove these in the future
-		or p:match'%.cmd$'
-		or p:match'%.sh$'
 	)
 end
 
@@ -391,10 +387,21 @@ local function git_version(package)
 	end)
 end
 
-local function git_tag(package)
+--list of tags
+local function git_tags(package)
 	return cached(tuple('git_tag', package), function()
-		return read_pipe('git --git-dir="_git/'..package..'/.git" tag')
+		local t = {}
+		for tag in pipe_lines('git --git-dir="_git/'..package..'/.git" tag') do
+			t[#t+1] = tag
+		end
+		return t
 	end)
+end
+
+--current tag (TODO: the last tag is not necessarily the most recent tag)
+local function git_tag(package)
+	local tags = git_tags(package)
+	return tags[#tags]
 end
 
 --csrc/<package>/build-<platform>.sh -> {platform = true,...}
@@ -542,7 +549,7 @@ end
 
 local function inspect_packages()
 	for package in pairs(known_packages()) do
-		print(string.format('%-16s %-16s %s', package, git_version(package), package_type(package)))
+		print(string.format('%-16s %-16s %-16s %s', package, git_tag(package), git_version(package), package_type(package)))
 	end
 end
 
@@ -853,7 +860,7 @@ end
 
 if not ... then
 
-inspect('lfs')
+inspect('lanes')
 --inspect_packages()
 multitracked_files()
 untracked_files()
