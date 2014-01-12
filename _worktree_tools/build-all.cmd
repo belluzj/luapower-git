@@ -1,0 +1,1 @@
+@sh build-all.sh %*

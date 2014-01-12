@@ -1,1 +1,1 @@
-@call sh new.sh %*
+@sh new.sh %*

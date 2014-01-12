@@ -1,8 +1,7 @@
 # build all C packages in order
-set -e
+set -e # break on errors
 
 [ "$OSTYPE" == "msys" ] && platform=mingw32 || platform=linux32
-cd ..
 
 indep_packages="
 luajit
@@ -51,9 +50,7 @@ harfbuzz
 packages="$indep_packages $luajit_packages $zlib_packages $ucdn_packages"
 
 for package in $packages; do
-	[ -f "csrc/$package/build-$platform.sh" ] && {
-		cd "csrc/$package"
-		./build-$platform.sh
-		cd ../..
-	}
+	[ -f "csrc/$package/build-$platform.sh" ] && (
+		cd "csrc/$package" && ./build-$platform.sh
+	)
 done
