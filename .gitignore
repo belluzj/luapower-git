@@ -1,8 +1,0 @@
-# ignore all files except *.cmd, *.sh, the _git dir and the luapower* module
-
-*
-!/*.cmd
-!/*.sh
-!/_git/
-!/_git/**
-!/luapower*
