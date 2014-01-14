@@ -536,7 +536,7 @@ end
 local function doc_category(package, doc)
 	return cached(tuple('doc_category', package, doc), function()
 		local t = doc_tags(package, doc)
-		if t.category then
+		if t and t.category then
 			return t.category
 		end
 		if modules(package)[doc] then --it's a module doc
@@ -545,13 +545,14 @@ local function doc_category(package, doc)
 				return docs(package, parent).title
 			end
 		end
-		if doc ~= package then --not the package's doc
+		if doc ~= package then --it's an uncategorized doc, tie it to the package's doc
 			if docs(package, package) then --but the package has a doc
 				return docs(package, package).title
 			end
 			return package --package has no doc, create a category of its name
+		else
+			return 'Other' --default category for uncategorized package docs
 		end
-		return false --no category, thus root
 	end)
 end
 
@@ -571,7 +572,7 @@ local function parse_toc_file()
 	for s in f:lines() do
 		local spaces, name = s:match'^(%s+)%*%s*%[?(.-)%]?%s*$'
 		if spaces then
-			local node = {[0] = name}
+			local node = {name = name}
 			if #spaces > indent then
 				table.insert(parents, parent)
 				parent = last_node
@@ -581,7 +582,6 @@ local function parse_toc_file()
 				indent = indent - 2
 			end
 			table.insert(parent, node)
-			parent[node] = true
 			last_node = node
 		end
 	end
@@ -602,6 +602,7 @@ local function toc_tree()
 			local pct = build_tree(get_names, get_parent)
 			table.insert(ct, pct)
 		end
+
 		--remove non-existing leaf (doc) nodes
 		--remove empty leafs
 		--inject ct nodes in tt preserving order and hierarchy
@@ -630,7 +631,7 @@ local function package_record(package)
 	return {
 		name = package,
 		tagline = doc_tags(package, package) and doc_tags(package, package).tagline,
-		category = category(package),
+		category = doc_category(package, package),
 		type = package_type(package),
 		git_version = git_version(package),
 		git_tag = git_tag(package),
@@ -1003,4 +1004,4 @@ add_action('rebuild', '', 'rebuild '..PACKAGES_JSON, rebuild_package_db)
 
 actions[... or 'help'].handler(select(2, ...))
 
-describe_package'path2d'
+--describe_package'path2d'

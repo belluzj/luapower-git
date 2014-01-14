@@ -12,8 +12,6 @@ git init
 git config --local core.worktree ../../..
 git config --local core.excludesfile _git/%1.exclude
 git remote add origin ssh://git@github.com/luapower/%1.git
-git config --local --add remote.origin.fetch +refs/tags/*:refs/tags/*
-git config --local --add remote.origin.push  refs/tags/*:refs/tags/*
 git fetch
 git branch --track master origin/master
 git checkout
