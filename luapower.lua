@@ -126,6 +126,10 @@ local function read_pipe(cmd)
 	return table.concat(t, '\n')
 end
 
+function gitp(package, args)
+	return 'git --git-dir="_git/'..package..'/.git" '..args
+end
+
 --path/dir/file -> path/dir, file
 local function split_path(path)
 	local filename = path:match'([^/]*)$'
@@ -348,7 +352,7 @@ end
 local function tracked_files(package)
 	return cached(tuple('files', package), function()
 		local t = {}
-		for path in pipe_lines(string.format('git --git-dir=_git/%s/.git ls-files', package)) do
+		for path in pipe_lines(gitp(package, 'ls-files')) do
 			t[path] = package
 		end
 		return t
@@ -432,15 +436,15 @@ end
 --current git version
 local function git_version(package)
 	return cached(tuple('git_version', package), function()
-		return read_pipe('git --git-dir="_git/'..package..'/.git" describe --tags --long --always')
+		return read_pipe(gitp(package, 'describe --tags --long --always'))
 	end)
 end
 
 --list of tags
 local function git_tags(package)
-	return cached(tuple('git_tag', package), function()
+	return cached(tuple('git_tags', package), function()
 		local t = {}
-		for tag in pipe_lines('git --git-dir="_git/'..package..'/.git" tag') do
+		for tag in pipe_lines(gitp(package, 'tag')) do
 			t[#t+1] = tag
 		end
 		return t
@@ -449,8 +453,9 @@ end
 
 --current tag (TODO: the last tag is not necessarily the current tag, is it?)
 local function git_tag(package)
-	local tags = git_tags(package)
-	return tags[#tags]
+	return cached(tuple('git_tag', package), function()
+		return read_pipe(gitp(package, 'describe --tags --abbrev=0'))
+	end)
 end
 
 --csrc/<package>/build-<platform>.sh -> {platform = true,...}
@@ -888,6 +893,7 @@ local function describe_package(package)
 	local tagline = t and t.tagline or ''
 	print(string.format('  %-16s %s', 'tagline:', tagline))
 	print(string.format('  %-16s %s', 'type:',    package_type(package)))
+	print(string.format('  %-16s %s', 'tag:', git_tag(package)))
 	print(string.format('  %-16s %s', 'version:', git_version(package)))
 	local t = glue.keys(platforms(package)); table.sort(t)
 	print(string.format('  %-16s %s', 'platforms:', #t > 0 and table.concat(t, ', ') or 'Lua'))
