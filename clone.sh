@@ -1,20 +1,50 @@
 #!/bin/sh
-# clone a package from github
+# clone a package (or all packages) from github, or list uncloned packages
 
-set -e # break on errors
-die() { echo "$@" >&2; exit 1; }
-package="$1"; [ "$package" ] || die "usage: $0 <package>"
-[ -f "$package.exclude" ] || die "unknown package $package"
-[ ! -d $package/.git ] || die "$package already cloned"
+usage() {
+	[ "$@" ] && {
+		echo
+		echo "ERROR: $@"
+	}
+	echo
+	echo "USAGE:"
+	echo "   clone <package>        clone a package"
+	echo "   clone --list           list uncloned packages"
+	echo "   clone --all            clone all packages"
+	echo
+	exit 1
+}
 
-mkdir -p _git/$package
-export GIT_DIR=_git/$package/.git
+list_uncloned() {
+	for f in _git/*.exclude; do
+		f=${f#_git/}
+		f=${f%.exclude}
+		[ ! -d _git/$f/.git ] && echo $f
+	done
+}
+
+clone_all() {
+	for package in `list_uncloned`; do
+		"$0" "$package"
+	done
+}
+
+[ "$1" ] || usage
+[ "$1" == "--all" ] && { clone_all; exit; }
+[ "$1" == "--list" ] && { list_uncloned; exit; }
+
+[ -f _git/$1.exclude ] || usage "unknown package $1"
+[ ! -d _git/$1/.git ] || usage "$1 already cloned"
+
+export GIT_DIR=_git/$1/.git
 
 git init
 git config --local core.worktree ../../..
-git config --local core.excludesfile _git/$package.exclude
-mkdir -p "$GIT_DIR/hooks" && cp -f "_git/pre-commit" "$GIT_DIR/hooks/"
-git remote add origin ssh://git@github.com/luapower/$package.git
+git config --local core.excludesfile _git/$1.exclude
+mkdir -p $GIT_DIR/hooks && \
+	cp -f _git/pre-commit _git/post-commit $GIT_DIR/hooks/
+git remote add origin "ssh://git@github.com/luapower/$1.git"
 git fetch
 git branch --track master origin/master
 git checkout
+

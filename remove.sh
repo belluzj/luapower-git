@@ -1,7 +1,23 @@
 #!/bin/sh
 # uninstall a package: remove all the files, any empty directories left behind and the git repo.
 
-package="$1"; [ "$package" ] || { echo "usage: $0 <package>" >&2; exit 1; }
+usage() {
+	echo
+	echo "USAGE:"
+	echo "   $0 <package>       remove a cloned package completely from the disk"
+	echo "   $0 --list          list cloned packages"
+	echo
+	exit 1
+}
+
+package="$1"
+[ "$package" ] || usage
+
+[ -d "_git/$package/.git" ] || {
+	echo
+	echo "ERROR: unknown package $1"
+	usage
+}
 
 files="$(GIT_DIR=_git/$package/.git git ls-files)"
 
