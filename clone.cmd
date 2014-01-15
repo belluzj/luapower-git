@@ -11,6 +11,7 @@ set GIT_DIR=_git/%1/.git
 git init
 git config --local core.worktree ../../..
 git config --local core.excludesfile _git/%1.exclude
+copy /Y _git\pre-commit _git\%PROJECT%\.git\hooks\pre-commit >null
 git remote add origin ssh://git@github.com/luapower/%1.git
 git fetch
 git branch --track master origin/master

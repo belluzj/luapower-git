@@ -9,6 +9,7 @@
 	exit 0
 }
 
+export PROJECT="$1"
 export GIT_DIR="_git/$1/.git"
 echo "tracking $1"
 git status -s

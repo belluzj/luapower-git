@@ -13,6 +13,7 @@ export GIT_DIR=_git/$package/.git
 git init
 git config --local core.worktree ../../..
 git config --local core.excludesfile _git/$package.exclude
+mkdir -p "$GIT_DIR/hooks" && cp -f "_git/pre-commit" "$GIT_DIR/hooks/"
 git remote add origin ssh://git@github.com/luapower/$package.git
 git fetch
 git branch --track master origin/master

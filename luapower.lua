@@ -1107,14 +1107,22 @@ local function help()
 		print(string.format('  %-30s %s', t.name .. ' ' .. t.args, t.info))
 	end
 	print''
+	print'<package> defaults to env. var PROJECT.'
+	print''
+end
+
+local function package_handler(handler)
+	return function(package)
+		return handler(package and package ~= '--all' and package or os.getenv'PROJECT')
+	end
 end
 
 add_action('help', '', 'usage information', help)
 add_action('packages', '[--all]', 'list installed packages; with --all, list all known packages', list_packages)
-add_action('describe', '<package>', 'describe a package', describe_package)
-add_action('check', '[package]', 'consistency checks', consistency_checks)
-add_action('update-db', '[package]', 'update '..PACKAGES_JSON, update_package_db)
-add_action('update-toc', '[package]', 'update '..TOC_FILE, update_toc_file)
+add_action('describe', '[package]', 'describe a package', package_handler(describe_package))
+add_action('check', '[package]', 'consistency checks', package_handler(consistency_checks))
+add_action('update-db', '[package]', 'update '..PACKAGES_JSON, package_handler(update_package_db))
+add_action('update-toc', '[package]', 'update '..TOC_FILE, package_handler(update_toc_file))
 
 local action = ... or 'help'
 if not actions[action] then
