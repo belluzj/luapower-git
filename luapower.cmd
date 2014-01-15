@@ -1,1 +1,1 @@
-@bin\mingw32\luajit luapower.lua %1
+@cd %~dp0 & bin\mingw32\luajit luapower.lua %*

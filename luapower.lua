@@ -8,10 +8,9 @@
 --NOTE: make sure this is the very first module that you require(),
 --otherwise get_dep_list() will not track all dependencies!
 
---helpers
----------------------------------------------------------------------------
 
 --find dependencies of a module by tracing the `require` calls.
+---------------------------------------------------------------------------
 
 local modules = {} --{module = {dep1 = true, ...}}
 local parents = {}
@@ -34,7 +33,9 @@ local function get_deps(m)
 	return modules[m]
 end
 
+
 --get a refined and ordered list of dependencies for printing
+---------------------------------------------------------------------------
 
 --standard names to appear in the list before other names
 local std = {}
@@ -74,18 +75,19 @@ local function get_dep_list(m)
 	return s
 end
 
---check if a module is a submodule of another module
-local function is_submodule(m, parent)
-	return m == parent or m:match('^'..parent..'[%.%_]')
-end
 
 --now that we trace require calls, we can load other modules that we need
+---------------------------------------------------------------------------
 
 local lfs = require'lfs'
 local glue = require'glue'
 local tuple = require'tuple'
 --also, cjson is a runtime dependency for building the package db
 --also, pp is a runtime dependency for inspect()
+
+
+--filesystem reader
+---------------------------------------------------------------------------
 
 --recursive lfs.dir() -> iter() -> filename, path, mode
 local function dir(p0, recurse)
@@ -104,6 +106,18 @@ local function dir(p0, recurse)
 	end
 	return coroutine.wrap(rec)
 end
+
+--path/dir/file -> path/dir, file
+local function split_path(path)
+	local filename = path:match'([^/]*)$'
+	local n = #path - #filename
+	if n > 1 then n = n - 1 end --remove trailing / if not /
+	return path:sub(1, n), filename
+end
+
+
+--git command output readers
+---------------------------------------------------------------------------
 
 --read a cmd output to a line iterator
 local function pipe_lines(cmd)
@@ -126,47 +140,76 @@ local function read_pipe(cmd)
 	return table.concat(t, '\n')
 end
 
+--execute a git command for a package repo
 function gitp(package, args)
 	return 'git --git-dir="_git/'..package..'/.git" '..args
 end
 
---path/dir/file -> path/dir, file
-local function split_path(path)
-	local filename = path:match'([^/]*)$'
-	local n = #path - #filename
-	if n > 1 then n = n - 1 end --remove trailing / if not /
-	return path:sub(1, n), filename
+
+--module finders
+---------------------------------------------------------------------------
+
+--path/*.lua -> Lua module name
+local function lua_module_name(path)
+	return path:gsub('/', '.'):match('(.-)%.lua$')
 end
 
---"key <separator> value" -> key, value
-local function split_kv(s, sep)
-	sep = glue.escape(sep)
-	return s:match('^([^'..sep..']*)%s*'..sep..'%s*(.*)$')
+--path/*.dll|.so -> C module name
+local function c_module_name(path)
+	local ext = package.cpath:match'%?%.(.-);'
+	local name = path:match('bin/[^/]+/clib/(.-)%.'..ext..'$')
+	return name and name:gsub('/', '.')
 end
 
---parse the yaml header of a pandoc .md file, enclosed by '---' lines
-local function parse_md_file(md_file, docname)
-	local t = {}
-	local f = io.open(md_file, 'r')
-	if not f or f:read'*l' ~= '---' then
-		error('no tags on '..md_file)
+local function module_name(path)
+	return lua_module_name(path) or c_module_name(path)
+end
+
+--mod_submod -> mod; mod.submod -> mod
+local function parent_module_name(mod)
+	local parent = mod:match'(.-)[_%.][^_%.]+$'
+	if not parent or parent == '' then return end
+	return parent
+end
+
+
+--tree builder and tree walker patterns
+---------------------------------------------------------------------------
+
+--tree builder based on a function that lists all names and a function that gets a parent's name
+local function build_tree(get_names, get_parent)
+	local parents = {}
+	for name in get_names() do
+		parents[name] = get_parent(name) or false
 	end
-	for s in f:lines() do
-		if s == '---' then break end
-		local k,v = split_kv(s, ':')
-		k,v = k and glue.trim(k), v and glue.trim(v)
-		if not k or k == '' then
-			error('invalid tag '..s)
-		elseif t[k] then
-			error('duplicate tag '..k)
-		else
-			t[k] = v
+	local root = {name = false}
+	local function add_children(pnode)
+		for name, parent in pairs(parents) do
+			if parent == pnode.name then
+				local node = {name = name}
+				table.insert(pnode, node)
+				add_children(node)
+			end
 		end
 	end
-	t.title = t.title or docname --set default title
-	f:close()
-	return t
+	add_children(root)
+	return root
 end
+
+--tree walker
+local function walk_tree(t, f)
+	local function walk_children(pnode, level)
+		for i,node in ipairs(pnode) do
+			f(node, level, pnode, i)
+			walk_children(node, level + 1)
+		end
+	end
+	walk_children(t, 0)
+end
+
+
+--WHAT file parser
+---------------------------------------------------------------------------
 
 --WHAT file -> {realname='', version='', url='', license='', dependencies={d1,...}}
 local function parse_what_file(what_file)
@@ -199,58 +242,38 @@ local function parse_what_file(what_file)
 	return t
 end
 
---path/*.lua -> Lua module name
-local function lua_module_name(path)
-	return path:gsub('/', '.'):match('(.-)%.lua$')
+
+--markdown yaml header parser
+---------------------------------------------------------------------------
+
+--"key <separator> value" -> key, value
+local function split_kv(s, sep)
+	sep = glue.escape(sep)
+	return s:match('^([^'..sep..']*)%s*'..sep..'%s*(.*)$')
 end
 
---path/*.dll|.so -> C module name
-local function c_module_name(path)
-	local ext = package.cpath:match'%?%.(.-);'
-	local name = path:match('bin/[^/]+/clib/(.-)%.'..ext..'$')
-	return name and name:gsub('/', '.')
-end
-
-local function module_name(path)
-	return lua_module_name(path) or c_module_name(path)
-end
-
---mod_submod -> mod; mod.submod -> mod
-local function parent_module_name(mod)
-	local parent = mod:match'(.-)[_%.][^_%.]+$'
-	if not parent or parent == '' then return end
-	return parent
-end
-
---tree builder pattern based on a function that lists all names and a function that gets a parent's name
-local function build_tree(get_names, get_parent)
-	local parents = {}
-	for name in get_names() do
-		parents[name] = get_parent(name) or false
+--parse the yaml header of a pandoc .md file, enclosed by lines containing only '---'
+local function parse_md_file(md_file, docname)
+	local t = {}
+	local f = io.open(md_file, 'r')
+	if not f or f:read'*l' ~= '---' then
+		error('no tags on '..md_file)
 	end
-	local root = {name = false}
-	local function add_children(pnode)
-		for name, parent in pairs(parents) do
-			if parent == pnode.name then
-				local node = {name = name}
-				table.insert(pnode, node)
-				add_children(node)
-			end
+	for s in f:lines() do
+		if s == '---' then break end
+		local k,v = split_kv(s, ':')
+		k,v = k and glue.trim(k), v and glue.trim(v)
+		if not k or k == '' then
+			error('invalid tag '..s)
+		elseif t[k] then
+			error('duplicate tag '..k)
+		else
+			t[k] = v
 		end
 	end
-	add_children(root)
-	return root
-end
-
---tree walker
-local function walk_tree(t, f)
-	local function walk_children(pnode, level)
-		for i,node in ipairs(pnode) do
-			f(node, level, pnode, i)
-			walk_children(node, level + 1)
-		end
-	end
-	walk_children(t, 0)
+	t.title = t.title or docname --set default title
+	f:close()
+	return t
 end
 
 
@@ -361,6 +384,15 @@ end
 
 --<doc>.md -> {doc = path}
 local function docs(package)
+	if not package then
+		return cached('docs', function()
+			local t = {}
+			for package in pairs(installed_packages()) do
+				glue.update(t, docs(package))
+			end
+			return t
+		end)
+	end
 	return cached(tuple('docs', package), function()
 		local t = {}
 		local files = tracked_files(package)
@@ -405,11 +437,10 @@ local function c_tags(package)
 	end)
 end
 
---<doc>.md -> {title='', project='', category=''}
+--<doc>.md -> {title='', project=''}
 local function doc_tags(package, doc)
 	return cached(tuple('doc_tags', package, doc), function()
-		local docs = docs(package)
-		local path = docs[doc]
+		local path = docs(package)[doc]
 		return path and parse_md_file(path, doc) or false
 	end)
 end
@@ -420,7 +451,8 @@ local function module_parent(package, mod)
 		local mods = modules(package)
 		local parent = parent_module_name(mod)
 		if not parent then return false end
-		return mods[parent] and parent or module_parent(package, parent)
+		if not mods[parent] then return false end
+		return parent or module_parent(package, parent)
 	end)
 end
 
@@ -532,54 +564,45 @@ local function module_tags(package, mod)
 	end)
 end
 
---infer a doc's category when it's not explicit.
-local function doc_category(package, doc)
-	return cached(tuple('doc_category', package, doc), function()
-		local t = doc_tags(package, doc)
-		if t and t.category then
-			return t.category
-		end
-		if modules(package)[doc] then --it's a module doc
-			local parent = module_parent(package, doc)
-			if parent and docs(package, parent) then --which has a parent which is documented
-				return docs(package, parent).title
-			end
-		end
-		if doc ~= package then --it's an uncategorized doc, tie it to the package's doc
-			if docs(package, package) then --but the package has a doc
-				return docs(package, package).title
-			end
-			return package --package has no doc, create a category of its name
-		else
-			return 'Other' --default category for uncategorized package docs
-		end
-	end)
-end
 
 --building and updating the category tree
 ---------------------------------------------------------------------------
 
 local TOC_FILE = '_site/toc.md'
 
---parse the table of contents file (which contains only a markdown bullet list) into a tree
+--parse the table of contents file into a tree.
+--the file should only contain a markdown bullet list indented with 4 spaces.
 local function parse_toc_file()
-	local root = {name = 'root'}
+	local root = {name = false}
 	local parent = root
 	local last_node = nil
 	local parents = {}
-	local indent = 2
+	local indent = 0
 	local f = io.open(TOC_FILE)
+	if not f then
+		return root
+	end
 	for s in f:lines() do
-		local spaces, name = s:match'^(%s+)%*%s*%[?(.-)%]?%s*$'
+		local spaces, name, doc = s:match'^(\t*)%*%s*%[([^%]]+)%]%(([^%)]+)%.html%)%s*$' -- " * [name](doc.html)"
+		if not spaces then
+			spaces, name, doc = s:match'^(\t*)%*%s*%[([^%]]+)%]%[([^%]]+)%]%s*$' -- " * [name][doc]"
+		end
+		if not spaces then
+			spaces, name = s:match'^(\t*)%*%s*%[([^%]]+)%]%s*$' -- " * [name]"
+			doc = name
+		end
+		if not spaces then
+			spaces, name = s:match'^(\t*)%*%s*(.-)%s*$' -- " * name"
+		end
 		if spaces then
-			local node = {name = name}
+			local node = {name = name, doc = doc}
 			if #spaces > indent then
 				table.insert(parents, parent)
 				parent = last_node
-				indent = indent + 2
+				indent = indent + 1
 			elseif #spaces < indent then
 				parent = table.remove(parents)
-				indent = indent - 2
+				indent = indent - 1
 			end
 			table.insert(parent, node)
 			last_node = node
@@ -589,36 +612,90 @@ local function parse_toc_file()
 	return root
 end
 
---toc tree by merging of the toc file with the category tree
-local function toc_tree()
-	return cached('toc_tree', function()
-		--get the current category tree
-		local tt = parse_toc_file()
-		--build a synthetic category tree
-		local ct = {}
-		for package in glue.sortedpairs(installed_packages()) do
-			local function get_names() return pairs(docs(package)) end
-			local function get_parent(doc) return doc_category(package, doc) end
-			local pct = build_tree(get_names, get_parent)
-			table.insert(ct, pct)
-		end
+local function write_toc_file(toc_tree)
+	local f = io.open(TOC_FILE, 'wb')
+	walk_tree(toc_tree, function(node, level)
+		local s = (node.doc and '['..node.name..']' or node.name) ..
+						(node.doc and node.name ~= node.doc and '['..node.doc..']' or '')
+		f:write(('\t'):rep(level) .. '* ' .. s .. '\n')
+	end)
+	f:close()
+end
 
-		--remove non-existing leaf (doc) nodes
-		--remove empty leafs
-		--inject ct nodes in tt preserving order and hierarchy
-		--TODO: all these
-		return tt
+local function toc_file()
+	return cached('toc_file', function()
+		return parse_toc_file()
 	end)
 end
 
-local function rebuild_toc()
-	local t = toc_tree()
-	local f = io.open(TOC_FILE, 'wb')
-	walk_tree(t, function(node, level)
-		local s = node.name
-		f:write(('  '):rep(level) .. '  * ' .. s .. '\n')
+local function uncategorized_docs(package)
+	local docs = docs(package)
+	local found = {}
+	walk_tree(toc_file(), function(node)
+		if docs[node.doc] then
+			found[node.doc] = true
+		end
 	end)
-	f:close()
+	local t = {}
+	for doc in pairs(docs) do
+		if not found[doc] then
+			t[doc] = true
+		end
+	end
+	return t
+end
+
+local function subnode(pnode, name)
+	for i,node in ipairs(pnode) do
+		if node.name == name then
+			return node
+		end
+	end
+end
+
+local function spare_node()
+	local node = subnode(toc_file(), 'Other')
+	if not node then
+		node = {name = 'Other'}
+		table.insert(toc_file(), node)
+	end
+	return node
+end
+
+local function toc_node(package, doc)
+	return {name = doc_tags(package, doc) and doc_tags(package, doc).title or doc, doc = doc}
+end
+
+local function update_toc_file(package)
+	assert(package, 'package missing')
+	local t = spare_node()
+	for doc in pairs(uncategorized_docs(package)) do
+		t[#t+1] = toc_node(package, doc)
+	end
+	write_toc_file(toc_file())
+end
+
+local function rebuild_toc_file()
+	local t = spare_node()
+	for package in pairs(installed_packages()) do
+		for doc in pairs(uncategorized_docs(package)) do
+			t[#t+1] = toc_node(package, doc)
+		end
+	end
+	write_toc_file(toc_file())
+end
+
+local function doc_category(doc)
+	local t = cached('doc_category', function()
+		local t = {}
+		walk_tree(toc_file(), function(node, level, parent)
+			if node.doc then
+				t[node.doc] = parent.name --TODO: compute the full path
+			end
+		end)
+		return t
+	end)
+	return t[doc] or 'Other'
 end
 
 
@@ -631,7 +708,7 @@ local function package_record(package)
 	return {
 		name = package,
 		tagline = doc_tags(package, package) and doc_tags(package, package).tagline,
-		category = doc_category(package, package),
+		category = doc_category(package),
 		type = package_type(package),
 		git_version = git_version(package),
 		git_tag = git_tag(package),
@@ -641,19 +718,23 @@ local function package_record(package)
 	}
 end
 
+local function write_package_db(db)
+	local cjson = require'cjson'
+	glue.writefile(PACKAGES_JSON, cjson.encode(db))
+end
+
 local function rebuild_package_db()
 	local db = {}
 	for package in pairs(installed_packages()) do
 		db[package] = package_record(package)
 	end
-	local cjson = require'cjson'
-	glue.writefile(PACKAGES_JSON, cjson.encode(db))
+	write_package_db(db)
 end
 
 --get packages db
 local function package_db()
-	local cjson = require'cjson'
 	return cached('package_db', function()
+		local cjson = require'cjson'
 		if not glue.fileexists(PACKAGES_JSON) then
 			rebuild_package_db()
 		end
@@ -662,12 +743,12 @@ local function package_db()
 end
 
 --update a package in the json file and rewrite the file
-local function update_package(package)
+local function update_package_db(package)
 	assert(package, 'package missing')
 	local cjson = require'cjson'
 	local db = package_db()
 	db[package] = package_record(package)
-	glue.writefile(PACKAGES_JSON, cjson.encode(db))
+	write_package_db(db)
 end
 
 
@@ -765,10 +846,11 @@ end
 --check for wrong project tag in docs
 local function wrong_project_tag(package)
 	if not package then
+		local t = {}
 		for package in pairs(installed_packages()) do
-			wrong_project_tag(package)
+			glue.extend(t, wrong_project_tag(package))
 		end
-		return
+		return t
 	end
 	local t = {}
 	for doc in pairs(docs(package)) do
@@ -825,6 +907,17 @@ local function undocumented_modules(include_submodules)
 	return t
 end
 
+local function toc_unknwon_links()
+	local t = {}
+	local docs = docs()
+	walk_tree(toc_file(), function(node)
+		if node.doc and not docs[node.doc] then
+			t[node.doc] = true
+		end
+	end)
+	return t
+end
+
 
 --use as loadable module
 ---------------------------------------------------------------------------
@@ -849,14 +942,14 @@ local luapower = {
 		platforms = platforms,
 		package_type = package_type,
 		module_tree = module_tree,
+	--toc file
+	toc_file = toc_file,
+	update_toc_file = update_toc_file,
+	rebuild_toc_file = rebuild_toc_file,
 	--package db
-	package_record = package_record,
 	package_db = package_db,
-	update_package = update_package,
+	update_package_db = update_package_db,
 	rebuild_package_db = rebuild_package_db,
-	--
-	toc_tree = toc_tree,
-	rebuild_toc = rebuild_toc,
 }
 
 if ... == 'luapower' then
@@ -880,6 +973,7 @@ end
 local function describe_package(package)
 	assert(package, 'package missing')
 
+	print''
 	print('# '..package)
 
 	local function h(s)
@@ -909,16 +1003,27 @@ local function describe_package(package)
 		end)
 
 		h'Dependencies'
-		local fmt = '%-24s %s'
-		local sep = ('-'):rep(24)..' '..('-'):rep(64)
-		print(string.format(fmt, 'module', 'dependencies'))
-		print(sep)
-		for mod in glue.sortedpairs(modules(package)) do
+		local has_deps
+		for mod in pairs(modules(package)) do
 			if module_dep_list(mod) ~= '' then
-				print(string.format(fmt, mod, module_dep_list(mod)))
+				has_deps = true
+				break
 			end
 		end
-		print(sep)
+		if has_deps then
+			local fmt = '%-24s %s'
+			local sep = ('-'):rep(24)..' '..('-'):rep(64)
+			print(string.format(fmt, 'module', 'dependencies'))
+			print(sep)
+			for mod in glue.sortedpairs(modules(package)) do
+				if module_dep_list(mod) ~= '' then
+					print(string.format(fmt, mod, module_dep_list(mod)))
+				end
+			end
+			print(sep)
+		else
+			print'  none'
+		end
 	end
 
 	if c_tags(package) then
@@ -943,8 +1048,8 @@ local function describe_package(package)
 end
 
 local function print_toc_tree()
-	walk_tree(toc_tree(), function(node, level)
-		print(('  '):rep(level) .. '  * ' .. node[0])
+	walk_tree(toc_file(), function(node, level)
+		print(('  '):rep(level) .. node.name)
 	end)
 end
 
@@ -970,7 +1075,13 @@ local function consistency_checks(package)
 	error_list('undocumented packages', undocumented_packages())
 	error_list('wrong project tag', wrong_project_tag(package))
 	error_list('wrong csrc dirs', wrong_csrc_dirs())
-	error_list('undocumented modules', undocumented_modules(true))
+	error_list('undocumented modules', undocumented_modules(false))
+	error_list('toc unknown links', toc_unknwon_links(package))
+end
+
+local function update_package(package)
+	update_package_db(package)
+	update_toc_file(package)
 end
 
 --dispatch based on cmdline arguments
@@ -984,9 +1095,10 @@ local function add_action(name, args, info, handler)
 end
 
 local function help()
-	print(string.format('usage: %s <action> ...', arg[0]))
 	print''
-	print'actions:'
+	print(string.format('USAGE: %s <command> ...', arg[0]))
+	print''
+	print'COMMANDS:'
 	print''
 	for i,t in ipairs(actions) do
 		print(string.format('  %-30s %s', t.name .. ' ' .. t.args, t.info))
@@ -999,9 +1111,15 @@ add_action('packages', '[--all]', 'list installed packages; with --all, list all
 add_action('describe', '<package>', 'describe a package', describe_package)
 add_action('toc', '', 'print the table of contents', print_toc_tree)
 add_action('check', '[<package>]', 'consistency checks', consistency_checks)
-add_action('update', '<package>', 'update package entry in '..PACKAGES_JSON, update_package)
-add_action('rebuild', '', 'rebuild '..PACKAGES_JSON, rebuild_package_db)
+add_action('update', '<package>', 'update package entry in '..PACKAGES_JSON..' and '..TOC_FILE, update_package)
+add_action('rebuild-db', '', 'rebuild '..PACKAGES_JSON, rebuild_package_db)
+add_action('rebuild-toc', '', 'rebuild '..TOC_FILE, rebuild_toc_file)
 
-actions[... or 'help'].handler(select(2, ...))
+local action = ... or 'help'
+if not actions[action] then
+	print''
+	print('ERROR: unknown command '..action)
+	action = 'help'
+end
 
---describe_package'path2d'
+actions[action].handler(select(2, ...))
