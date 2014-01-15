@@ -371,9 +371,24 @@ local function installed_packages()
 	end)
 end
 
+local function cached_package(cache_key, package, func)
+	if not package then
+		return cached(cache_key, function()
+			local t = {}
+			for package in pairs(installed_packages()) do
+				glue.update(t, func(package))
+			end
+			return t
+		end)
+	end
+	return cached(tuple(cache_key, package), function()
+		return func(package)
+	end)
+end
+
 --git ls-files -> {path = package}
 local function tracked_files(package)
-	return cached(tuple('files', package), function()
+	return cached_package('tracked_files', package, function(package)
 		local t = {}
 		for path in pipe_lines(gitp(package, 'ls-files')) do
 			t[path] = package
@@ -384,16 +399,7 @@ end
 
 --<doc>.md -> {doc = path}
 local function docs(package)
-	if not package then
-		return cached('docs', function()
-			local t = {}
-			for package in pairs(installed_packages()) do
-				glue.update(t, docs(package))
-			end
-			return t
-		end)
-	end
-	return cached(tuple('docs', package), function()
+	return cached_package('docs', package, function(package)
 		local t = {}
 		local files = tracked_files(package)
 		for path in pairs(files) do
@@ -414,7 +420,7 @@ end
 
 --<module>.lua -> {module = path}
 local function modules(package)
-	return cached(tuple('modules', package), function()
+	return cached_package('modules', package, function(package)
 		local t = {}
 		local files = tracked_files(package)
 		for path in pairs(files) do
@@ -629,20 +635,22 @@ local function toc_file()
 end
 
 local function uncategorized_docs(package)
-	local docs = docs(package)
-	local found = {}
-	walk_tree(toc_file(), function(node)
-		if docs[node.doc] then
-			found[node.doc] = true
+	return cached_package('uncategorized_docs', package, function(package)
+		local docs = docs(package)
+		local found = {}
+		walk_tree(toc_file(), function(node)
+			if docs[node.doc] then
+				found[node.doc] = true
+			end
+		end)
+		local t = {}
+		for doc in pairs(docs) do
+			if not found[doc] then
+				t[doc] = true
+			end
 		end
+		return t
 	end)
-	local t = {}
-	for doc in pairs(docs) do
-		if not found[doc] then
-			t[doc] = true
-		end
-	end
-	return t
 end
 
 local function subnode(pnode, name)
@@ -666,20 +674,13 @@ local function toc_node(package, doc)
 	return {name = doc_tags(package, doc) and doc_tags(package, doc).title or doc, doc = doc}
 end
 
-local function update_toc_file(package)
-	assert(package, 'package missing')
-	local t = spare_node()
-	for doc in pairs(uncategorized_docs(package)) do
-		t[#t+1] = toc_node(package, doc)
-	end
-	write_toc_file(toc_file())
-end
-
-local function rebuild_toc_file()
+local function update_toc_file(target_package)
 	local t = spare_node()
 	for package in pairs(installed_packages()) do
-		for doc in pairs(uncategorized_docs(package)) do
-			t[#t+1] = toc_node(package, doc)
+		if not package or package == target_package then
+			for doc in pairs(uncategorized_docs(package)) do
+				t[#t+1] = toc_node(package, doc)
+			end
 		end
 	end
 	write_toc_file(toc_file())
@@ -744,7 +745,10 @@ end
 
 --update a package in the json file and rewrite the file
 local function update_package_db(package)
-	assert(package, 'package missing')
+	if not package then
+		rebuild_package_db()
+		return
+	end
 	local cjson = require'cjson'
 	local db = package_db()
 	db[package] = package_record(package)
@@ -806,9 +810,9 @@ local function duplicate_docs()
 end
 
 --check for undocumented (thus invisible) packages
-local function undocumented_packages()
-	local t = {}
-	for package in pairs(installed_packages()) do
+local function undocumented_package(package)
+	return cached_package('undocumented_package', package, function(package)
+		local t = {}
 		local docs = docs(package)
 		if not docs[package] then
 			--if any modules are documented that's ok too
@@ -823,14 +827,14 @@ local function undocumented_packages()
 				t[package] = true
 			end
 		end
-	end
-	return t
+		return t
+	end)
 end
 
---check for csrc dirs not matching package name
-local function wrong_csrc_dirs()
-	local t = {}
-	for package in pairs(installed_packages()) do
+--check for csrc dir not matching package name
+local function wrong_csrc_dir(package)
+	return cached_package('wrong_csrc_dir', package, function(package)
+		local t = {}
 		for path in pairs(tracked_files(package)) do
 			local csrc_dir = path:match('^csrc/(.-)/')
 			if csrc_dir then
@@ -839,27 +843,22 @@ local function wrong_csrc_dirs()
 				end
 			end
 		end
-	end
-	return t
+		return t
+	end)
 end
 
 --check for wrong project tag in docs
 local function wrong_project_tag(package)
-	if not package then
+	return cached_package('wrong_project_tag', package, function(package)
 		local t = {}
-		for package in pairs(installed_packages()) do
-			glue.extend(t, wrong_project_tag(package))
+		for doc in pairs(docs(package)) do
+			local project_tag = doc_tags(package, doc).project
+			if project_tag ~= package then
+				t[doc] = true
+			end
 		end
 		return t
-	end
-	local t = {}
-	for doc in pairs(docs(package)) do
-		local project_tag = doc_tags(package, doc).project
-		if project_tag ~= package then
-			t[doc] = true
-		end
-	end
-	return t
+	end)
 end
 
 --check for undocumented modules. lots cases when a module doesn't need documenting.
@@ -891,9 +890,9 @@ local function blacklisted_module(mod) --some modules don't need documenting
 		or mod:match'_h$'
 		or blacklisted_parent(mod)
 end
-local function undocumented_modules(include_submodules)
-	local t = {}
-	for package in pairs(installed_packages()) do
+local function undocumented_modules(package, include_submodules)
+	return cached_package('undocumented_modules'..(include_submodules and '_sub' or ''), package, function(package)
+		local t = {}
 		local docs = docs(package)
 		local mods = modules(package)
 		for mod in pairs(mods) do
@@ -903,8 +902,8 @@ local function undocumented_modules(include_submodules)
 				end
 			end
 		end
-	end
-	return t
+		return t
+	end)
 end
 
 local function toc_unknwon_links()
@@ -939,17 +938,27 @@ local luapower = {
 		c_tags = c_tags,
 		git_version = git_version,
 		git_tags = git_tags,
+		git_tag = git_tag,
 		platforms = platforms,
 		package_type = package_type,
 		module_tree = module_tree,
 	--toc file
 	toc_file = toc_file,
 	update_toc_file = update_toc_file,
-	rebuild_toc_file = rebuild_toc_file,
 	--package db
 	package_db = package_db,
 	update_package_db = update_package_db,
-	rebuild_package_db = rebuild_package_db,
+	--consistency checks / global
+	multitracked_files = multitracked_files, --wrong *.exclude patterns?
+	untracked_files = untracked_files, --forgot to git add?
+	duplicate_docs = duplicate_docs, --typo? name clash?
+	toc_unknwon_links = toc_unknwon_links, --old html files?
+	--consistency checks / per package
+	undocumented_package = undocumented_package, --can't even download it
+	wrong_project_tag = wrong_project_tag, --typo? forgot to rename?
+	wrong_csrc_dir = wrong_csrc_dir, --shouldn't happen anymore
+	undocumented_modules = undocumented_modules, --not blacklisted? too early to document?
+	uncategorized_docs = uncategorized_docs, --forgot to add them to the TOC?
 }
 
 if ... == 'luapower' then
@@ -1047,12 +1056,6 @@ local function describe_package(package)
 	print''
 end
 
-local function print_toc_tree()
-	walk_tree(toc_file(), function(node, level)
-		print(('  '):rep(level) .. node.name)
-	end)
-end
-
 local function count(t)
 	local n = 0
 	for k in pairs(t) do n = n + 1 end
@@ -1069,19 +1072,19 @@ local function error_list(title, t)
 	print''
 end
 local function consistency_checks(package)
-	error_list('multitracked files', multitracked_files())
-	error_list('untracked files', untracked_files())
-	error_list('duplicate docs', duplicate_docs())
-	error_list('undocumented packages', undocumented_packages())
+	--global checks, only enabled if package is not specified
+	if not package then
+		error_list('multitracked files', multitracked_files())
+		error_list('untracked files', untracked_files())
+		error_list('duplicate docs', duplicate_docs())
+		error_list('toc unknown links', toc_unknwon_links())
+	end
+	--package-specific checks (they also work with no package specified)
+	error_list('undocumented packages', undocumented_package(package))
 	error_list('wrong project tag', wrong_project_tag(package))
-	error_list('wrong csrc dirs', wrong_csrc_dirs())
-	error_list('undocumented modules', undocumented_modules(false))
-	error_list('toc unknown links', toc_unknwon_links(package))
-end
-
-local function update_package(package)
-	update_package_db(package)
-	update_toc_file(package)
+	error_list('wrong csrc dir', wrong_csrc_dir(package))
+	error_list('undocumented modules', undocumented_modules(package, false))
+	error_list('uncategorized docs', uncategorized_docs(package))
 end
 
 --dispatch based on cmdline arguments
@@ -1109,11 +1112,9 @@ end
 add_action('help', '', 'usage information', help)
 add_action('packages', '[--all]', 'list installed packages; with --all, list all known packages', list_packages)
 add_action('describe', '<package>', 'describe a package', describe_package)
-add_action('toc', '', 'print the table of contents', print_toc_tree)
-add_action('check', '[<package>]', 'consistency checks', consistency_checks)
-add_action('update', '<package>', 'update package entry in '..PACKAGES_JSON..' and '..TOC_FILE, update_package)
-add_action('rebuild-db', '', 'rebuild '..PACKAGES_JSON, rebuild_package_db)
-add_action('rebuild-toc', '', 'rebuild '..TOC_FILE, rebuild_toc_file)
+add_action('check', '[package]', 'consistency checks', consistency_checks)
+add_action('update-db', '[package]', 'update '..PACKAGES_JSON, update_package_db)
+add_action('update-toc', '[package]', 'update '..TOC_FILE, update_toc_file)
 
 local action = ... or 'help'
 if not actions[action] then
