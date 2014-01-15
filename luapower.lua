@@ -1087,6 +1087,11 @@ local function consistency_checks(package)
 	error_list('uncategorized docs', uncategorized_docs(package))
 end
 
+local function update_package(package)
+	update_package_db(package)
+	update_toc_file(package)
+end
+
 --dispatch based on cmdline arguments
 
 local actions = {}
@@ -1123,6 +1128,7 @@ add_action('describe', '[package]', 'describe a package', package_handler(descri
 add_action('check', '[package]', 'consistency checks', package_handler(consistency_checks))
 add_action('update-db', '[package]', 'update '..PACKAGES_JSON, package_handler(update_package_db))
 add_action('update-toc', '[package]', 'update '..TOC_FILE, package_handler(update_toc_file))
+add_action('update', '[package]', 'update both '..PACKAGES_JSON..' and '..TOC_FILE, package_handler(update_package))
 
 local action = ... or 'help'
 if not actions[action] then
