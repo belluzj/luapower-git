@@ -6,7 +6,7 @@
 --without worrying about doing multiple calls on the same arguments.
 
 --NOTE: make sure this is the very first module that you require(),
---otherwise get_dep_list() will not track all dependencies!
+--otherwise get_deps() will not track all dependencies!
 
 
 --find dependencies of a module by tracing the `require` calls.
@@ -38,41 +38,36 @@ end
 ---------------------------------------------------------------------------
 
 --standard names to appear in the list before other names
-local std = {}
+--also, these are the modules that will not be found in any package.
+local std_modules = {}
 for k in pairs(package.loaded) do
-	std[k] = true
+	std_modules[k] = true
 end
-std.ffi = true
-std.jit = true
+std_modules.ffi = true
+std_modules.jit = true
 
 --built-in libraries, to ignore
 local exclude = {string = true, table = true, coroutine = true, package = true, io = true}
 
-local dep_lists = {}
-
 local function get_dep_list(m)
-	if dep_lists[m] then
-		return dep_lists[m]
-	end
 	local deps = get_deps(m)
 	local t = {}
-	--collect modules to a list, skipping excludes
+	--collect modules to a list, skipping excludes (also collect them as keys)
 	for k in pairs(deps) do
 		if not exclude[k] then
 			t[#t+1] = k
+			t[k] = true
 		end
 	end
-	--sort names by std then by name
+	--sort names by std_modules then by name
 	table.sort(t, function(a, b)
-		if std[a] == std[b] then
+		if std_modules[a] == std_modules[b] then
 			return a < b
 		else
-			return not std[b]
+			return not std_modules[b]
 		end
 	end)
-	local s = table.concat(t, ', ')
-	dep_lists[m] = s
-	return s
+	return t
 end
 
 
@@ -439,7 +434,7 @@ end
 local function c_tags(package)
 	return cached(tuple('c_tags', package), function()
 		local what_file = string.format('csrc/%s/WHAT', package)
-		return tracked_files(package)[what_file] and parse_what_file(what_file) or false
+		return glue.fileexists(what_file) and parse_what_file(what_file) or false
 	end)
 end
 
@@ -462,13 +457,11 @@ local function module_parent(package, mod)
 	end)
 end
 
---list of modules required by a module
+--refined and ordered list of module dependencies
 local function module_deps(mod)
-	return is_loadable_module(mod) and get_deps(mod) or {}
-end
-
-local function module_dep_list(mod)
-	return is_loadable_module(mod) and get_dep_list(mod) or ''
+	return cached(tuple('module_dep_list', mod), function()
+		return is_loadable_module(mod) and get_dep_list(mod) or {}
+	end)
 end
 
 --current git version
@@ -499,6 +492,7 @@ end
 --csrc/<package>/build-<platform>.sh -> {platform = true,...}
 --<package>.md:platforms -> {platform = true,...}
 local function platforms(package)
+	assert(package, 'package missing')
 	return cached(tuple('platforms', package), function()
 		--platforms are inferred from the name of the build script
 		local t = {}
@@ -933,7 +927,6 @@ local luapower = {
 			module_parent = module_parent,
 			is_loadable_module = is_loadable_module,
 				module_deps = module_deps,
-				module_dep_list = module_dep_list,
 				module_tags = module_tags,
 		c_tags = c_tags,
 		git_version = git_version,
@@ -969,13 +962,34 @@ end
 --use as cmdline script
 ---------------------------------------------------------------------------
 
-local function list(t)
+local function list_keys(t)
 	for k in glue.sortedpairs(t) do
 		print(k)
 	end
 end
+
+local function enum_keys(kt)
+	local t = {}
+	for k in glue.sortedpairs(kt) do
+		t[#t+1] = k
+	end
+	return table.concat(t, ', ')
+end
+
+local function list_array(t)
+	for i,k in ipairs(t) do
+		print(k)
+	end
+end
+
+local function list_tree(t)
+	walk_tree(t, function(node, level)
+		print(('  '):rep(level) .. node.name)
+	end)
+end
+
 local function list_packages(opt)
-	list(opt == '--all' and known_packages() or installed_packages())
+	list_keys(opt == '--all' and known_packages() or installed_packages())
 end
 
 --generate a nice markdown page for a package
@@ -1014,7 +1028,7 @@ local function describe_package(package)
 		h'Dependencies'
 		local has_deps
 		for mod in pairs(modules(package)) do
-			if module_dep_list(mod) ~= '' then
+			if next(module_deps(mod)) then
 				has_deps = true
 				break
 			end
@@ -1025,8 +1039,8 @@ local function describe_package(package)
 			print(string.format(fmt, 'module', 'dependencies'))
 			print(sep)
 			for mod in glue.sortedpairs(modules(package)) do
-				if module_dep_list(mod) ~= '' then
-					print(string.format(fmt, mod, module_dep_list(mod)))
+				if next(module_deps(mod)) then
+					print(string.format(fmt, mod, table.concat(module_deps(mod), ', ')))
 				end
 			end
 			print(sep)
@@ -1061,6 +1075,7 @@ local function count(t)
 	for k in pairs(t) do n = n + 1 end
 	return n
 end
+
 local function error_list(title, t)
 	if not next(t) then return end
 	local s = string.format('%s (%d)', title, count(t))
@@ -1071,6 +1086,7 @@ local function error_list(title, t)
 	end
 	print''
 end
+
 local function consistency_checks(package)
 	--global checks, only enabled if package is not specified
 	if not package then
@@ -1116,19 +1132,147 @@ local function help()
 	print''
 end
 
-local function package_handler(handler)
+local function package_arg(handler)
+	return function(package, ...)
+		if package == '--all' then package = nil end
+		return handler(package or os.getenv'PROJECT', ...)
+	end
+end
+
+local function package_list(handler)
 	return function(package)
-		return handler(package and package ~= '--all' and package or os.getenv'PROJECT')
+		if package then
+			print(handler(package))
+		else
+			for package in pairs(installed_packages()) do
+				print(string.format('%-16s %s', package, handler(package)))
+			end
+		end
+	end
+end
+
+local function mtags(package, mod)
+	if not package then
+		for package in pairs(installed_packages()) do
+			mtags(package)
+		end
+	elseif not mod then
+		for mod in pairs(modules(package)) do
+			mtags(package, mod)
+		end
+	else
+		local t = module_tags(package, mod)
+		print(string.format('%-16s %-24s %-16s %-16s %s', package, mod, t.lang, t.kind, t.doc or ''))
+	end
+end
+
+local function ctags(package)
+	if not package then
+		for package in pairs(installed_packages()) do
+			ctags(package)
+		end
+	else
+		local t = c_tags(package)
+		if t then
+			print(string.format('%-16s %-24s %-16s %-16s %-36s',
+				package, t.realname, t.version, t.license, t.url))
+		end
 	end
 end
 
 add_action('help', '', 'usage information', help)
+
 add_action('packages', '[--all]', 'list installed packages; with --all, list all known packages', list_packages)
-add_action('describe', '[package]', 'describe a package', package_handler(describe_package))
-add_action('check', '[package]', 'consistency checks', package_handler(consistency_checks))
-add_action('update-db', '[package]', 'update '..PACKAGES_JSON, package_handler(update_package_db))
-add_action('update-toc', '[package]', 'update '..TOC_FILE, package_handler(update_toc_file))
-add_action('update', '[package]', 'update both '..PACKAGES_JSON..' and '..TOC_FILE, package_handler(update_package))
+add_action('describe', '[package]', 'describe a package', package_arg(describe_package))
+add_action('check', '[package]', 'consistency checks', package_arg(consistency_checks))
+
+add_action('update-db', '[package]', 'update '..PACKAGES_JSON, package_arg(update_package_db))
+add_action('update-toc', '[package]', 'update '..TOC_FILE, package_arg(update_toc_file))
+add_action('update', '[package]', 'update both '..PACKAGES_JSON..' and '..TOC_FILE, package_arg(update_package))
+
+add_action('trackable', '', 'list trackable files', function() list_keys(disk_files()) end)
+add_action('multitracked', '', 'list files tracked by multiple packages', function() list_keys(multitracked_files()) end)
+add_action('untracked', '', 'list untracked files', function() list_keys(untracked_files()) end)
+
+add_action('files', '[package]', 'list tracked files', package_arg(function(package) list_keys(tracked_files(package)) end))
+add_action('docs', '[package]', 'list docs', package_arg(function(package) list_keys(docs(package)) end))
+add_action('modules', '[package]', 'list modules', package_arg(function(package) list_keys(modules(package)) end))
+add_action('mtree', '[package]', 'print the module tree', package_arg(function(package)
+	assert(package, 'package missing')
+	list_tree(module_tree(package))
+end))
+add_action('mtags', '<package> <module>', 'module info', package_arg(mtags))
+
+add_action('ctags', '<package> <module>', 'module info', package_arg(ctags))
+
+add_action('deps', '<module>', 'list module dependencies', function(mod) list_array(module_deps(mod)) end)
+
+local function module_package(mod)
+	return cached(tuple('module_package', mod), function()
+		--shortcut: standard module
+		if std_modules[mod] then return false end
+		--shortcut: find the package that matches the module name or a module parent name
+		local mod1 = mod
+		while mod1 do
+			if installed_packages()[mod1] then
+				if modules(mod1)[mod1] then --confirm that the module is in the package
+					return mod1
+				end
+			end
+			mod1 = parent_module_name(mod1)
+		end
+		--go the slow way
+		--print('going slow for '..mod..'...')
+		for package in pairs(installed_packages()) do
+			if modules(package)[mod] then
+				return package
+			end
+		end
+		return false
+	end)
+end
+
+local function package_deps(package)
+	local t = c_tags(package)
+	local deps = t and t.dependencies or {}
+	for mod in pairs(modules(package)) do
+		for i,dep_mod in ipairs(module_deps(mod)) do
+			local dep_package = module_package(dep_mod)
+			if dep_package and dep_package ~= package then
+				deps[dep_package] = true
+			end
+		end
+	end
+	return deps
+end
+
+local function pdeps(package)
+	if not package then
+		for package in pairs(installed_packages()) do
+			local deps = package_deps(package)
+			print(string.format('%-16s %s', package, enum_keys(deps)))
+		end
+	else
+		list_keys(package_deps(package))
+	end
+end
+
+add_action('pdeps', '[package]', 'list package dependencies', package_arg(pdeps))
+
+add_action('ver', '[package]', 'current git version', package_arg(package_list(git_version)))
+add_action('tags', '<package>', 'list git tags', package_arg(function(package) list_array(git_tags(package)) end))
+add_action('tag', '[package]', 'current git tag', package_arg(package_list(git_tag)))
+add_action('platforms', '<package>', 'list supported platforms', package_arg(function(package)
+	if package then
+		list_keys(platforms(package))
+	else
+		for package in pairs(installed_packages()) do
+			print(string.format('%-16s %s', package, enum_keys(platforms(package))))
+		end
+	end
+end))
+add_action('type', '[package]', 'package type', package_arg(package_list(package_type)))
+
 
 local action = ... or 'help'
 if not actions[action] then
