@@ -380,12 +380,13 @@ local function not_installed_packages()
 	end)
 end
 
+--if package is not given, run func() with all installed packages and aggregate the results into a single table
 local function cached_package(cache_key, package, func)
 	if not package then
 		return cached(cache_key, function()
 			local t = {}
 			for package in pairs(installed_packages()) do
-				glue.update(t, func(package))
+				glue.update(t, cached_package(cache_key, package, func))
 			end
 			return t
 		end)
@@ -473,7 +474,7 @@ end
 
 --refined and ordered list of module dependencies
 local function module_deps(mod)
-	return cached(tuple('module_dep_list', mod), function()
+	return cached(tuple('module_deps', mod), function()
 		return is_loadable_module(mod) and get_dep_list(mod) or {}
 	end)
 end
@@ -530,24 +531,28 @@ local function platforms(package)
 	end)
 end
 
---package type (heuristic)
-local function package_type(package)
-	local has_c = c_tags(package)
-	local has_lua = next(modules(package))
-	local has_ffi = false
-	for mod in pairs(modules(package)) do
-		local deps = module_deps(mod)
-		if deps.ffi then
-			has_ffi = true
-			break
+--package type
+local function package_tags(package)
+	return cached(tuple('package_tags', package), function()
+		local has_doc = docs(package)[package] and true or false
+		local has_c = c_tags(package) and true or false
+		local has_lua = next(modules(package)) and true or false
+		local has_ffi = false
+		for mod in pairs(modules(package)) do
+			local deps = module_deps(mod)
+			if deps.ffi then
+				has_ffi = true
+				break
+			end
 		end
-	end
-	return
-		has_ffi and 'Lua+ffi' or
-		has_lua and not has_c and not has_ffi and 'Lua' or
-		has_c and not has_lua and 'C' or
-		has_c and has_lua and not has_ffi and 'Lua/C' or
-		'other'
+		return {
+			has_doc = has_doc,
+			has_c = has_c,
+			has_lua = has_lua,
+			has_ffi = has_ffi,
+			type = has_ffi and 'Lua+ffi' or has_lua and (has_c and 'Lua/C' or 'Lua') or has_c and 'C' or 'other'
+		}
+	end)
 end
 
 --build a module tree for a package based on naming conventions
@@ -571,14 +576,13 @@ local function module_tags(package, mod)
 				mod:match'_demo$' and 'demo app'
 				or mod:match'_test$' and 'test unit'
 				or 'module',
-			doc = docs(package)[mod],
 			demo_module = modules(package)[mod..'_demo'] and mod..'_demo',
 			test_module = modules(package)[mod..'_test'] and mod..'_test',
 		}
 	end)
 end
 
---reverse lookup of a package from a module
+--reverse lookup of a package from a module, or package association for all modules
 local function module_package(mod)
 	return cached(tuple('module_package', mod), function()
 		--shortcut: standard module
@@ -598,6 +602,60 @@ local function module_package(mod)
 		for package in pairs(installed_packages()) do
 			if modules(package)[mod] then
 				return package
+			end
+		end
+		return false
+	end)
+end
+
+--package dependencies: packages of all module dependencies of all modules
+local function package_deps(package)
+	return cached(tuple('package_deps', package), function()
+		local t = c_tags(package)
+		local deps = t and t.dependencies or {}
+		for mod in pairs(modules(package)) do
+			for i,dep_mod in ipairs(module_deps(mod)) do
+				local dep_package = module_package(dep_mod)
+				if dep_package and dep_package ~= package then
+					deps[dep_package] = true
+				end
+			end
+		end
+		return deps
+	end)
+end
+
+--external doc refs for referencing external docs for modules and packages
+local EXTERNAL_REFS_FILE = '_site/external-refs.md.inc'
+local function external_refs()
+	return cached('external_refs', function()
+		local t = {}
+		for s in io.lines(EXTERNAL_REFS_FILE) do
+			local ref, link = s:match'^%[([^%]]+)%]%:%s*(.*)$'
+			t[ref] = link
+		end
+		return t
+	end)
+end
+
+--url for viewing a module's source file
+local function module_view_source_link(package, mod)
+	if module_tags(package, mod).lang ~= 'Lua' then return end
+	local path = modules(package)[mod]
+	return 'https://github.com/luapower/' .. package .. '/blob/master/' .. path
+end
+
+--best url for referencing a module: either a doc url, view-source url or external url or none
+local function module_link(package, mod)
+	return cached(tuple('module_link', package, mod), function()
+		if external_refs()[mod] then
+			return external_refs()[mod]
+		elseif package then
+			if docs(package)[mod] then
+				return mod .. '.html'
+			else
+				local link = module_view_source_link(package, mod)
+				if link then return link end
 			end
 		end
 		return false
@@ -709,14 +767,16 @@ local function toc_node(package, doc)
 end
 
 local function update_toc_file(target_package)
-	local t = spare_node()
+	local t
 	for package in pairs(installed_packages()) do
 		if not package or package == target_package then
 			for doc in pairs(uncategorized_docs(package)) do
+				t = t or spare_node()
 				t[#t+1] = toc_node(package, doc)
 			end
 		end
 	end
+	--TODO: update node names from doc title tags
 	write_toc_file(toc_file())
 end
 
@@ -740,16 +800,47 @@ end
 local PACKAGES_JSON = '_site/packages.json'
 
 local function package_record(package)
+	local ptags = package_tags(package)
+	local modt = {}
+	local function dep_links(mdeps)
+		local t = {}
+		for i,dep_mod in ipairs(mdeps) do
+			local dep_package = module_package(dep_mod)
+			t[i] = module_link(dep_package, dep_mod)
+		end
+		return t
+	end
+	for mod in pairs(modules(package)) do
+		if docs(package)[mod] then
+			local tags = module_tags(package, mod)
+			local mdeps = glue.extend({}, module_deps(mod)) --copy the array part
+			modt[mod] = {
+				source_link = module_view_source_link(package, mod),
+				test_module = tags.test_module,
+				test_module_link = tags.test_module and module_link(package, tags.test_module),
+				demo_module = tags.demo_module,
+				demo_module_link = tags.demo_module and module_link(package, tags.demo_module),
+				dependencies = mdeps,
+				dep_links = dep_links(mdeps),
+			}
+		end
+	end
+	local pdeps = glue.keys(package_deps(package)); table.sort(pdeps)
 	return {
 		name = package,
-		tagline = doc_tags(package, package) and doc_tags(package, package).tagline,
+		tagline = ptags.has_doc and doc_tags(package, package).tagline or '',
 		category = doc_category(package),
-		type = package_type(package),
+		has_doc = ptags.has_doc,
+		has_c = ptags.has_c,
+		has_lua = ptags.has_lua,
+		has_ffi = ptags.has_ffi,
+		type = ptags.type,
 		git_version = git_version(package),
 		git_tag = git_tag(package),
-		c_version = c_tags(package) and ((c_tags(package).realname or name) .. ' ' .. c_tags(package).version),
-		c_license = c_tags(package) and c_tags(package).license,
+		c_tags = c_tags(package),
 		platforms = platforms(package),
+		dependencies = pdeps,
+		modules = modt,
 	}
 end
 
@@ -761,6 +852,7 @@ end
 local function rebuild_package_db()
 	local db = {}
 	for package in pairs(installed_packages()) do
+		print(package..'...')
 		db[package] = package_record(package)
 	end
 	write_package_db(db)
@@ -779,14 +871,14 @@ end
 
 --update a package in the json file and rewrite the file
 local function update_package_db(package)
-	if not package then
+	if package then
+		local cjson = require'cjson'
+		local db = package_db()
+		db[package] = package_record(package)
+		write_package_db(db)
+	else
 		rebuild_package_db()
-		return
 	end
-	local cjson = require'cjson'
-	local db = package_db()
-	db[package] = package_record(package)
-	write_package_db(db)
 end
 
 
@@ -843,23 +935,13 @@ local function duplicate_docs()
 	return dupes
 end
 
---check for undocumented (thus invisible) packages
+--check for undocumented packages
 local function undocumented_package(package)
 	return cached_package('undocumented_package', package, function(package)
 		local t = {}
 		local docs = docs(package)
 		if not docs[package] then
-			--if any modules are documented that's ok too
-			local hasdoc
-			for mod in pairs(modules(package)) do
-				if docs[mod] then
-					hasdoc = true
-					break
-				end
-			end
-			if not hasdoc then
-				t[package] = true
-			end
+			t[package] = true
 		end
 		return t
 	end)
@@ -940,7 +1022,8 @@ local function undocumented_modules(package, include_submodules)
 	end)
 end
 
-local function toc_unknwon_links()
+--check for any links in TOC that don't have an md file
+local function toc_unsourced_links()
 	local t = {}
 	local docs = docs()
 	walk_tree(toc_file(), function(node)
@@ -952,7 +1035,7 @@ local function toc_unknwon_links()
 end
 
 
---use as loadable module
+--use as module
 ---------------------------------------------------------------------------
 
 local luapower = {
@@ -968,14 +1051,17 @@ local luapower = {
 			is_loadable_module = is_loadable_module,
 				module_deps = module_deps,
 				module_tags = module_tags,
+				module_link = module_link,
 		c_tags = c_tags,
 		git_version = git_version,
 		git_tags = git_tags,
 		git_tag = git_tag,
 		platforms = platforms,
-		package_type = package_type,
+		package_tags = package_tags,
 		module_tree = module_tree,
+		package_deps = package_deps,
 	module_package = module_package,
+	external_refs = external_refs,
 	--toc file
 	toc_file = toc_file,
 	update_toc_file = update_toc_file,
@@ -986,7 +1072,7 @@ local luapower = {
 	multitracked_files = multitracked_files, --wrong *.exclude patterns?
 	untracked_files = untracked_files, --forgot to git add?
 	duplicate_docs = duplicate_docs, --typo? name clash?
-	toc_unknwon_links = toc_unknwon_links, --old html files?
+	toc_unsourced_links = toc_unsourced_links, --old html files?
 	--consistency checks / per package
 	undocumented_package = undocumented_package, --can't even download it
 	wrong_project_tag = wrong_project_tag, --typo? forgot to rename?
@@ -1050,7 +1136,7 @@ local function describe_package(package)
 	local t = doc_tags(package, package)
 	local tagline = t and t.tagline or ''
 	print(string.format('  %-16s: %s', 'tagline', tagline))
-	print(string.format('  %-16s: %s', 'type',    package_type(package)))
+	print(string.format('  %-16s: %s', 'type',    package_tags(package) and package_tags(package).type))
 	print(string.format('  %-16s: %s', 'tag', git_tag(package)))
 	print(string.format('  %-16s: %s', 'version', git_version(package)))
 	local t = glue.keys(platforms(package)); table.sort(t)
@@ -1137,7 +1223,7 @@ local function consistency_checks(package)
 		error_list('multitracked files', multitracked_files())
 		error_list('untracked files', untracked_files())
 		error_list('duplicate docs', duplicate_docs())
-		error_list('toc unknown links', toc_unknwon_links())
+		error_list('toc unknown links', toc_unsourced_links())
 	end
 	--package-specific checks (they also work with no package specified)
 	error_list('undocumented packages', undocumented_package(package))
@@ -1183,13 +1269,14 @@ local function package_arg(handler)
 	end
 end
 
-local function package_list(handler)
+local function package_list(handler, enumerator)
+	enumerator = enumerator or glue.pass
 	return function(package)
 		if package then
 			print(handler(package))
 		else
 			for package in pairs(installed_packages()) do
-				print(string.format('%-16s %s', package, handler(package)))
+				print(string.format('%-16s %s', package, enumerator(handler(package))))
 			end
 		end
 	end
@@ -1206,7 +1293,7 @@ local function mtags(package, mod)
 		end
 	else
 		local t = module_tags(package, mod)
-		print(string.format('%-16s %-24s %-16s %-16s %s', package, mod, t.lang, t.kind, t.doc or ''))
+		print(string.format('%-16s %-24s %-16s %s', package, mod, t.lang, t.kind))
 	end
 end
 
@@ -1251,20 +1338,6 @@ add_action('mtags', '[package [module]]', 'module info', package_arg(mtags))
 add_action('ctags', '[package]', 'C package info', package_arg(ctags))
 add_action('deps', '<module>', 'find module dependencies', function(mod) list_array(module_deps(mod)) end)
 
-local function package_deps(package)
-	local t = c_tags(package)
-	local deps = t and t.dependencies or {}
-	for mod in pairs(modules(package)) do
-		for i,dep_mod in ipairs(module_deps(mod)) do
-			local dep_package = module_package(dep_mod)
-			if dep_package and dep_package ~= package then
-				deps[dep_package] = true
-			end
-		end
-	end
-	return deps
-end
-
 local function pdeps(package)
 	if package then
 		list_keys(package_deps(package))
@@ -1297,7 +1370,7 @@ add_action('platforms', '[package]', 'list supported platforms', package_arg(fun
 		end
 	end
 end))
-add_action('type', '[package]', 'package type', package_arg(package_list(package_type)))
+add_action('type', '[package]', 'package type', package_arg(package_list(package_tags)))
 
 
 local action = ... or 'help'
