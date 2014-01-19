@@ -1,15 +1,14 @@
---luapower package database library (Cosmin Apreutesei, public domain).
+--luapower reflection library (Cosmin Apreutesei, public domain).
 --leverages the many conventions in luapower to extract and aggregate metadata about
 --packages, modules, and documentation and perform various consistency checks.
---it also generates and updates the list of packages that is used on luapower.com
---and the table of contents. the entire API is memoized so it can be abused
+--it also generates and updates the list of packages and table of contents that
+--are used on luapower.com. the entire API is memoized so it can be abused
 --without worrying about doing multiple calls on the same arguments.
 
---NOTE: make sure this is the very first module that you require(),
---otherwise get_deps() will not track all dependencies!
+--NOTE: make sure this is the very first module that you require in your scripts.
 
 
---data acquisition helpers
+--data acquisition: readers and parsers
 --=========================================================================
 
 --find dependencies of a module by tracing the `require` calls.
@@ -37,7 +36,7 @@ function require(m)
 	return ret
 end
 
-local function module_require_list(m) --direct dependencies
+local function module_requires(m) --direct dependencies
 	if not modules[m] then
 		assert(not next(parents))
 		require(m)
@@ -155,7 +154,7 @@ local function module_name(path)
 	return lua_module_name(path) or c_module_name(path)
 end
 
---mod_submod -> mod; mod.submod -> mod
+--'module_submodule' -> 'module'; 'module.submodule' -> 'module'
 local function parent_module_name(mod)
 	local parent = mod:match'(.-)[_%.][^_%.]+$'
 	if not parent or parent == '' then return end
@@ -218,7 +217,7 @@ local function parse_what_file(what_file)
 	--parse the second line which has the format: 'requires: <pkg1>, <pkg2>, ...'
 	t.dependencies = {}
 	local s = f:read'*l'
-	s = s and s:match'^%s*requires:%s*(.*)'
+	s = s and s:match'^[^:]*:(.*)'
 	if s then
 		for s in glue.gsplit(s, ',') do
 			s = glue.trim(s)
@@ -239,7 +238,12 @@ end
 --"key <separator> value" -> key, value
 local function split_kv(s, sep)
 	sep = glue.escape(sep)
-	return s:match('^([^'..sep..']*)%s*'..sep..'%s*(.*)$')
+	local k,v = s:match('^([^'..sep..']*)'..sep..'(.*)$')
+	k = k and glue.trim(k)
+	if not k then return end
+	v = glue.trim(v)
+	if v == '' then v = true end --values default to true in pandoc
+	return k,v
 end
 
 --parse the yaml header of a pandoc .md file, enclosed by lines containing only '---'
@@ -252,8 +256,7 @@ local function parse_md_file(md_file, docname)
 	for s in f:lines() do
 		if s == '---' then break end
 		local k,v = split_kv(s, ':')
-		k,v = k and glue.trim(k), v and glue.trim(v)
-		if not k or k == '' then
+		if not k then
 			error('invalid tag '..s)
 		elseif t[k] then
 			error('duplicate tag '..k)
@@ -287,8 +290,12 @@ local function memoize(func)
 end
 
 
---data acquisition
+--data acquisition: logic and collection
 --=========================================================================
+
+
+--disk files, irrespective of git trackings
+---------------------------------------------------------------------------
 
 --check if a path is valid for containing tracked files
 local function is_valid_path(p)
@@ -296,35 +303,6 @@ local function is_valid_path(p)
 		(p:match'^_' and not p:match'^_git/') --reserve _* for external stuff
 		or p:match'^%.git/'
 		or p:match'/%.git/'
-	)
-end
-
---check if a path is valid for containing docs
-local function is_doc_path(p)
-	return not p or not (
-		p:match'^bin/'
-		or p:match'^csrc/'
-		or p:match'^media/'
-	)
-end
-
---check if a path is valid for containing modules
-local function is_module_path(p)
-	return not p or not (
-		(p:match'^bin/' and not p:match'^bin/[^/]+/clib/')
-		or p:match'^csrc/'
-		or p:match'^media/'
-	)
-end
-
---check if a name is a module as opposed to a script or app
-local function is_loadable_module(mod)
-	return not (
-		mod:match'_test$'
-		or mod:match '_demo$'
-		or mod:match'_benchmark$'
-		or mod:match'_app$'
-		or mod:match'^lexers%.'
 	)
 end
 
@@ -339,6 +317,10 @@ local disk_files = memoize(function()
 	end
 	return t
 end)
+
+
+--packages and their files
+---------------------------------------------------------------------------
 
 --_git/<name>.exclude -> {name = true}
 local known_packages = memoize(function()
@@ -400,6 +382,39 @@ local tracked_files = memoize_package(function(package)
 	return t
 end)
 
+
+--tracked files breakdown: modules, scripts, docs
+---------------------------------------------------------------------------
+
+--check if a path is valid for containing modules
+local function is_module_path(p)
+	return not p or not (
+		(p:match'^bin/' and not p:match'^bin/[^/]+/clib/')
+		or p:match'^csrc/'
+		or p:match'^media/'
+	)
+end
+
+--check if a path is valid for containing docs
+local function is_doc_path(p)
+	return not p or not (
+		p:match'^bin/'
+		or p:match'^csrc/'
+		or p:match'^media/'
+	)
+end
+
+--check if a name is a module as opposed to a script or app
+local function is_module(mod)
+	return not (
+		mod:match'_test$'
+		or mod:match '_demo$'
+		or mod:match'_benchmark$'
+		or mod:match'_app$'
+		or mod:match'^lexers%.' --TODO: these are not yet modules (they depend on their environment)
+	)
+end
+
 --tracked <doc>.md -> {doc = path}
 local docs = memoize_package(function(package)
 	local t = {}
@@ -418,25 +433,45 @@ local docs = memoize_package(function(package)
 	return t
 end)
 
---tracked <module>.lua -> {module = path}
-local modules = memoize_package(function(package)
+local function modules_(package, should_be_module)
 	local t = {}
 	for path in pairs(tracked_files(package)) do
 		if is_module_path(path) then
 			local mod = module_name(path)
-			if mod then
+			if mod and is_module(mod) == should_be_module then
 				t[mod] = path
 			end
 		end
 	end
 	return t
+end
+--tracked <module>.lua -> {module = path}
+local modules = memoize_package(function(package) return modules_(package, true) end)
+--tracked <script>.lua -> {script = path}
+local scripts = memoize_package(function(package) return modules_(package, false) end)
+
+
+--module trees
+---------------------------------------------------------------------------
+
+--first ancestor module (parent, grandad etc) that actually exists in the same package.
+local function module_parent_(package, mod)
+	local parent = parent_module_name(mod)
+	if not parent then return end
+	return modules(package)[parent] and parent or module_parent_(package, parent)
+end
+local module_parent = memoize(module_parent_)
+
+--build a module tree for a package
+local module_tree = memoize(function(package)
+	local function get_names() return pairs(modules(package)) end
+	local function get_parent(mod) return module_parent(package, mod) end
+	return build_tree(get_names, get_parent)
 end)
 
---csrc/<package>/WHAT -> {tag=val,...}
-local c_tags = memoize(function(package)
-	local what_file = string.format('csrc/%s/WHAT', package)
-	return glue.fileexists(what_file) and parse_what_file(what_file)
-end)
+
+--doc tags
+---------------------------------------------------------------------------
 
 --tracked <doc>.md -> {title='', project='', other yaml tags...}
 local doc_tags = memoize(function(package, doc)
@@ -444,156 +479,13 @@ local doc_tags = memoize(function(package, doc)
 	return path and parse_md_file(path, doc)
 end)
 
---first ancestor module (parent, grandad etc) that actually exists in the same package.
-local module_parent
-module_parent = memoize(function(package, mod)
-	local parent = parent_module_name(mod)
-	if not parent then return end
-	return modules(package)[parent] and parent or module_parent(package, parent)
-end)
 
---build a module tree for a package based on naming conventions
-local module_tree = memoize(function(package)
-	local function get_names() return pairs(modules(package)) end
-	local function get_parent(mod) return module_parent(package, mod) end
-	return build_tree(get_names, get_parent)
-end)
-
---direct and indirect module dependencies of a module, as keys (so unsorted)
-local module_deps = memoize(function(mod)
-	if not is_loadable_module(mod) then
-		return {}
-	end
-	local t = {}
-	local function add_deps(mod)
-		for dep in pairs(module_require_list(mod)) do
-			t[dep] = true
-			add_deps(dep)
-		end
-	end
-	add_deps(mod)
-	return t
-end)
-
---table.sort cmp function for sorting module names alphabetically, built-in modules first.
-local function module_sort_cmp(a, b)
-	if builtin_modules[a] == builtin_modules[b] then
-		--if a and be are in the same class, compare their names
-		return a < b
-	else
-		--compare classes (std. vs non-std. module)
-		return not builtin_modules[b]
-	end
-end
-
---ordered list of module dependencies (built-in modules first)
-local module_dep_list = memoize(function(mod)
-	local t = glue.keys(module_deps(mod))
-	table.sort(t, module_sort_cmp)
-	return t
-end)
-
---module dependency tree
-local module_require_tree = memoize(function(mod, sorted)
-	local function add_deps(pnode)
-		if is_loadable_module(pnode.name) then
-			for dep in pairs(module_require_list(pnode.name)) do
-				local node = {name = dep}
-				table.insert(pnode, node)
-				add_deps(node)
-			end
-		end
-		if sorted then
-			table.sort(pnode, function(node1, node2) return module_sort_cmp(node1.name, node2.name) end)
-		end
-		return pnode
-	end
-	return add_deps({name = mod})
-end)
-
---current git version
-local git_version = memoize(function(package)
-	return read_pipe(gitp(package, 'describe --tags --long --always'))
-end)
-
---list of tags
-local git_tags = memoize(function(package)
-	local t = {}
-	for tag in pipe_lines(gitp(package, 'tag')) do
-		t[#t+1] = tag
-	end
-	return t
-end)
-
---current tag
-local git_tag = memoize(function(package)
-	return read_pipe(gitp(package, 'describe --tags --abbrev=0'))
-end)
-
---csrc/<package>/build-<platform>.sh -> {platform = true,...}
---<package>.md:platforms -> {platform = true,...}
-local platforms = memoize(function(package)
-	--platforms are inferred from the name of the build script
-	local t = {}
-	for path in pairs(tracked_files(package)) do
-		local platform = path:match('^csrc/'..glue.escape(package..'/build-')..'(.-)%.sh$')
-		if platform then
-			t[platform] = true
-		end
-	end
-	--platforms can also be specified in the 'platforms' tag of the package doc file
-	local tags = doc_tags(package, package)
-	if tags and tags.platforms then
-		for platform in glue.gsplit(tags.platforms, ',') do
-			platform = glue.trim(platform)
-			if platform ~= '' then
-				t[platform] = true
-			end
-		end
-	end
-	return t
-end)
-
---analytic info for a package
-local package_tags = memoize(function(package)
-	local has_doc = docs(package)[package] and true or false
-	local has_c = c_tags(package) and true or false
-	local has_lua = next(modules(package)) and true or false
-	local has_ffi = false
-	for mod in pairs(modules(package)) do
-		if module_deps(mod).ffi then
-			has_ffi = true
-			break
-		end
-	end
-	return {
-		has_doc = has_doc,
-		has_c = has_c,
-		has_lua = has_lua,
-		has_ffi = has_ffi,
-		type = has_ffi and 'Lua+ffi' or has_lua and (has_c and 'Lua/C' or 'Lua') or has_c and 'C' or 'other'
-	}
-end)
-
---analytic info for a module
-local module_tags = memoize(function(package, mod)
-	local mod_path = modules(package)[mod]
-	return {
-		lang =
-			lua_module_name(mod_path) and 'Lua'
-			or c_module_name(mod_path) and 'C',
-		kind =
-			mod:match'_demo$' and 'demo app'
-			or mod:match'_test$' and 'test unit'
-			or 'module',
-		demo_module = modules(package)[mod..'_demo'] and mod..'_demo',
-		test_module = modules(package)[mod..'_test'] and mod..'_test',
-	}
-end)
+--reverse lookups
+---------------------------------------------------------------------------
 
 --reverse lookup of a package from a module
 local module_package = memoize(function(mod)
-	--shortcut: standard module
+	--shortcut: builtin module
 	if builtin_modules[mod] then return end
 	--shortcut: find the package that matches the module name or a module parent name
 	local mod1 = mod
@@ -623,62 +515,359 @@ local doc_package = function(doc)
 	return path and tracked_files()[path]
 end
 
---package dependencies of a module (or a package): {package = true}
-local package_deps
-package_deps = memoize(function(package, mod)
-	if not mod then
-		--recursively accumulate module deps
-		local deps = {}
-		for mod in pairs(modules(package)) do
-			glue.update(deps, package_deps(package, mod))
+
+--package csrc info
+---------------------------------------------------------------------------
+
+--csrc/<package>/WHAT -> {tag=val,...}
+local c_tags = memoize(function(package)
+	local what_file = string.format('csrc/%s/WHAT', package)
+	return glue.fileexists(what_file) and parse_what_file(what_file)
+end)
+
+--csrc/<package>/build-<platform>.sh -> {platform = true,...}
+--<package>.md:platforms -> {platform = true,...}
+local platforms = memoize_package(function(package)
+	--platforms are inferred from the name of the build script
+	local t = {}
+	for path in pairs(tracked_files(package)) do
+		local platform = path:match('^csrc/'..glue.escape(package..'/build-')..'(.-)%.sh$')
+		if platform then
+			t[platform] = true
 		end
-		--add declared C deps to the mix
-		if c_tags(package) then
-			glue.update(deps, c_tags(package).dependencies)
-		end
-		return deps
 	end
-	--single module package deps
+	--platforms can also be specified in the 'platforms' tag of the package doc file
+	local tags = doc_tags(package, package)
+	if tags and tags.platforms then
+		for platform in glue.gsplit(tags.platforms, ',') do
+			platform = glue.trim(platform)
+			if platform ~= '' then
+				t[platform] = true
+			end
+		end
+	end
+	return t
+end)
+
+
+--package git info
+---------------------------------------------------------------------------
+
+--current git version
+local git_version = memoize(function(package)
+	return read_pipe(gitp(package, 'describe --tags --long --always'))
+end)
+
+--list of tags
+local git_tags = memoize(function(package)
+	local t = {}
+	for tag in pipe_lines(gitp(package, 'tag')) do
+		t[#t+1] = tag
+	end
+	return t
+end)
+
+--current tag
+local git_tag = memoize(function(package)
+	return read_pipe(gitp(package, 'describe --tags --abbrev=0'))
+end)
+
+
+--module dependencies
+---------------------------------------------------------------------------
+
+--direct and indirect module dependencies of a module, as a table
+local module_requires_all = memoize(function(mod)
+	local t = {}
+	local function add_deps(mod)
+		for dep in pairs(module_requires(mod)) do
+			t[dep] = true
+			add_deps(dep)
+		end
+	end
+	add_deps(mod)
+	return t
+end)
+
+--direct and indirect module dependencies of a module, as a tree
+local module_requires_tree = memoize(function(mod)
+	local function add_deps(pnode)
+		for dep in pairs(module_requires(pnode.name)) do
+			local node = {name = dep}
+			table.insert(pnode, node)
+			add_deps(node)
+		end
+		return pnode
+	end
+	return add_deps({name = mod})
+end)
+
+--direct-external module dependencies of a module
+local module_requires_ext = memoize(function(mod, package)
+	package = package or module_package(mod)
+	local t = {}
+	local function add_deps(mod)
+		for dep in pairs(module_requires(mod)) do
+			if not modules(package)[dep] then --external dependency, record it and stop recursion
+				t[dep] = true
+			else --internal dependency, recurse
+				add_deps(dep)
+			end
+		end
+	end
+	add_deps(mod)
+	return t
+end)
+
+--package deps from a module_requires_* result table
+local function package_deps_(mod, package, add_dep_c_deps, module_deps)
+	package = package or module_package(mod)
 	local deps = {}
-	for dep_mod in pairs(module_deps(mod)) do
-		local dep_package = module_package(dep_mod)
+	--add declared C deps to the mix (C deps apply to all modules in the package)
+	if c_tags(package) and c_tags(package).dependencies then
+		glue.update(deps, c_tags(package).dependencies)
+	end
+	for mod in pairs(module_deps) do
+		local dep_package = module_package(mod)
+		assert(dep_package or builtin_modules[mod] or not is_module(mod))
 		if dep_package and dep_package ~= package then
 			deps[dep_package] = true
 		end
+		if add_dep_c_deps then
+			--add declared C deps to the mix (C deps apply to all modules in the package)
+			if c_tags(dep_package) and c_tags(dep_package).dependencies then
+				glue.update(deps, c_tags(dep_package).dependencies)
+			end
+		end
+	end
+	return deps
+end
+
+--direct and indirect package dependencies of a module
+local module_requires_packages_all = memoize(function(mod, package)
+	return package_deps_(mod, package, true, module_requires_all(mod, package))
+end)
+
+--direct-external package dependencies of a module
+local module_requires_packages_ext = memoize(function(mod, package)
+	return package_deps_(mod, package, false, module_requires_ext(mod, package))
+end)
+
+--direct and indirect package dependencies of a package
+local package_requires_packages_all = memoize_package(function(package)
+	local deps = {}
+	for mod in pairs(modules(package)) do
+		glue.update(deps, module_requires_packages_all(mod, package))
 	end
 	return deps
 end)
+
+--direct-external package dependencies of a package
+local package_requires_packages_ext = memoize_package(function(package)
+	local deps = {}
+	for mod in pairs(modules(package)) do
+		glue.update(deps, module_requires_packages_ext(mod, package))
+	end
+	return deps
+end)
+
+
+--analytic info
+---------------------------------------------------------------------------
+
+--analytic info for a package
+local package_tags = memoize(function(package)
+	local has_doc = docs(package)[package] and true or false
+	local has_c = c_tags(package) and true or false
+	local has_lua = next(modules(package)) and true or false
+	local has_ffi = false
+	for mod in pairs(modules(package)) do
+		if module_requires_all(mod).ffi then
+			has_ffi = true
+			break
+		end
+	end
+	return {
+		has_doc = has_doc,
+		has_c = has_c,
+		has_lua = has_lua,
+		has_ffi = has_ffi,
+		type = has_ffi and 'Lua+ffi' or has_lua and (has_c and 'Lua/C' or 'Lua') or has_c and 'C' or 'other'
+	}
+end)
+
+--analytic info for a module
+local module_tags = memoize(function(package, mod)
+	local mod_path = modules(package)[mod]
+	return {
+		lang =
+			lua_module_name(mod_path) and 'Lua'
+			or c_module_name(mod_path) and 'C',
+		demo_module = scripts(package)[mod..'_demo'] and mod..'_demo',
+		test_module = scripts(package)[mod..'_test'] and mod..'_test',
+	}
+end)
+
+
+--web links
+---------------------------------------------------------------------------
 
 --external doc refs for referencing external docs for modules and packages
 local EXTERNAL_REFS_FILE = '_site/external-refs.md.inc'
 local external_refs = memoize(function()
 	local t = {}
 	for s in io.lines(EXTERNAL_REFS_FILE) do
-		local ref, link = s:match'^%[([^%]]+)%]%:%s*(.*)$'
-		t[ref] = link
+		local ref, url = s:match'^%[([^%]]+)%]%:%s*(.*)$'
+		t[ref] = url
 	end
 	return t
 end)
 
 --url for viewing a module's source file
-local function module_view_source_link(package, mod)
-	if module_tags(package, mod).lang ~= 'Lua' then return end
-	local path = modules(package)[mod]
+local module_source_url = memoize(function(package, mod)
+	if modules(package)[mod] and module_tags(package, mod).lang ~= 'Lua' then return end
+	local path = modules(package)[mod] or scripts(package)[mod]
 	return 'https://github.com/luapower/' .. package .. '/blob/master/' .. path
-end
+end)
 
 --best url for referencing a module: either a doc url, view-source url or external url or none
-local module_doc_link = memoize(function(package, mod)
+local module_doc_url = memoize(function(package, mod)
 	if external_refs()[mod] then
 		return external_refs()[mod]
 	elseif package then
 		if docs(package)[mod] then
 			return mod .. '.html'
 		else
-			return module_view_source_link(package, mod)
+			return module_source_url(package, mod)
 		end
 	end
 end)
+
+--best url for referencing a package: either a doc url or the github home url
+local package_doc_url = memoize(function(package)
+	if docs(package)[package] then
+		return package .. '.html'
+	else
+		return 'https://github.com/luapower/' .. package
+	end
+end)
+
+
+--building and updating the package database
+--=========================================================================
+
+local PACKAGES_JSON = '_site/packages.json'
+
+local function link(text, url) --a link object to be used in json (url is optional)
+	return {text, url}
+end
+
+local function module_dep_links(package, mod)
+	local t = {}
+	for dep in pairs(module_requires_ext(mod, package)) do
+		local dep_package = module_package(dep)
+		table.insert(t, link(dep, module_doc_url(dep_package, dep)))
+	end
+	table.sort(t, function(a, b)
+		a = a[1]
+		b = b[1]
+		if builtin_modules[a] == builtin_modules[b] then
+			--if a and be are in the same class, compare their names
+			return a < b
+		else
+			--compare classes (std. vs non-std. module)
+			return not builtin_modules[b]
+		end
+	end)
+	return t
+end
+
+local function package_dep_links(package, mod)
+	local t = {}
+	local deps = mod and
+		module_requires_packages_ext(mod, package) or
+		package_requires_packages_ext(package)
+	for dep in pairs(deps) do
+		table.insert(t, link(dep, package_doc_url(dep)))
+	end
+	table.sort(t, function(a, b) return a[1] < b[1] end) --sort by link text
+	return t
+end
+
+local function package_record(package)
+	local modt = {}
+	for mod in pairs(modules(package)) do
+		if docs(package)[mod] then
+			local tags = module_tags(package, mod)
+			modt[mod] = {
+				source_link = link('source', module_source_url(package, mod)),
+				test_link = tags.test_module and link('test', module_doc_url(package, tags.test_module)),
+				demo_link = tags.demo_module and link('demo', module_doc_url(package, tags.demo_module)),
+				mdep_links = module_dep_links(package, mod),
+				pdep_links = package_dep_links(package, mod),
+			}
+		end
+	end
+	local ptags = package_tags(package)
+	local dtags = doc_tags(package, package) or {}
+	local ctags = c_tags(package) or {}
+	return {
+		name = package,
+		tagline = dtags.tagline,
+		link = link(package, package_doc_url(package)),
+		--category = doc_category(package),
+		--has_doc = ptags.has_doc,
+		--has_c = ptags.has_c,
+		has_lua = ptags.has_lua,
+		has_ffi = ptags.has_ffi,
+		type = ptags.type,
+		--git_version = git_version(package),
+		git_tag = git_tag(package),
+		c_link = ptags.has_c and link(ctags.realname .. ' ' .. ctags.version, ctags.url),
+		--c_realname = ctags.realname,
+		--c_version = ctags.version,
+		--c_url = ctags.url,
+		c_license = ctags.license,
+		platforms = platforms(package),
+		--pdep_links = package_dep_links(package),
+		modules = modt,
+	}
+end
+
+local function write_package_db(db)
+	local cjson = require'cjson'
+	glue.writefile(PACKAGES_JSON, cjson.encode(db))
+end
+
+local function rebuild_package_db()
+	local db = {}
+	for package in pairs(installed_packages()) do
+		print(package..'...')
+		db[package] = package_record(package)
+	end
+	write_package_db(db)
+end
+
+--get packages db
+local package_db = memoize(function()
+	local cjson = require'cjson'
+	if not glue.fileexists(PACKAGES_JSON) then
+		rebuild_package_db()
+	end
+	return cjson.decode(glue.readfile(PACKAGES_JSON))
+end)
+
+--update a package in the json file and rewrite the file
+local function update_package_db(package)
+	if package then
+		local cjson = require'cjson'
+		local db = package_db()
+		db[package] = package_record(package)
+		write_package_db(db)
+	else
+		rebuild_package_db()
+	end
+end
 
 
 --building and updating the category tree
@@ -829,92 +1018,6 @@ local doc_category = memoize(function(doc, separator)
 end)
 
 
---building and updating the package database
---=========================================================================
-
-local PACKAGES_JSON = '_site/packages.json'
-
-local function package_record(package)
-	local ptags = package_tags(package)
-	local modt = {}
-	local function dep_links(mdeps)
-		local t = {}
-		for i,dep_mod in ipairs(mdeps) do
-			local dep_package = module_package(dep_mod)
-			t[i] = module_doc_link(dep_package, dep_mod) or ''
-		end
-		return t
-	end
-	for mod in pairs(modules(package)) do
-		if docs(package)[mod] then
-			local tags = module_tags(package, mod)
-			local mdeps = module_dep_list(mod)
-			modt[mod] = {
-				source_link = module_view_source_link(package, mod),
-				test_module = tags.test_module,
-				test_module_link = tags.test_module and module_doc_link(package, tags.test_module),
-				demo_module = tags.demo_module,
-				demo_module_link = tags.demo_module and module_doc_link(package, tags.demo_module),
-				dependencies = mdeps,
-				dep_links = dep_links(mdeps),
-			}
-		end
-	end
-	local pdeps = glue.keys(package_deps(package)); table.sort(pdeps)
-	return {
-		name = package,
-		tagline = ptags.has_doc and doc_tags(package, package).tagline or '',
-		category = doc_category(package),
-		has_doc = ptags.has_doc,
-		has_c = ptags.has_c,
-		has_lua = ptags.has_lua,
-		has_ffi = ptags.has_ffi,
-		type = ptags.type,
-		git_version = git_version(package),
-		git_tag = git_tag(package),
-		c_tags = c_tags(package),
-		platforms = platforms(package),
-		dependencies = pdeps,
-		modules = modt,
-	}
-end
-
-local function write_package_db(db)
-	local cjson = require'cjson'
-	glue.writefile(PACKAGES_JSON, cjson.encode(db))
-end
-
-local function rebuild_package_db()
-	local db = {}
-	for package in pairs(installed_packages()) do
-		print(package..'...')
-		db[package] = package_record(package)
-	end
-	write_package_db(db)
-end
-
---get packages db
-local package_db = memoize(function()
-	local cjson = require'cjson'
-	if not glue.fileexists(PACKAGES_JSON) then
-		rebuild_package_db()
-	end
-	return cjson.decode(glue.readfile(PACKAGES_JSON))
-end)
-
---update a package in the json file and rewrite the file
-local function update_package_db(package)
-	if package then
-		local cjson = require'cjson'
-		local db = package_db()
-		db[package] = package_record(package)
-		write_package_db(db)
-	else
-		rebuild_package_db()
-	end
-end
-
-
 --consistency checks
 --=========================================================================
 
@@ -1035,16 +1138,14 @@ local function blacklisted_parent(mod)
 end
 local function blacklisted_module(mod) --some modules don't need documenting
 	return
-		not is_loadable_module(mod)
-		or mod:match'_h$'
+		mod:match'_h$'
 		or blacklisted_parent(mod)
 end
 local function undocumented_modules(package, include_submodules)
 	return memoize_package('undocumented_modules'..(include_submodules and '_sub' or ''), package, function(package)
 		local t = {}
 		local docs = docs(package)
-		local mods = modules(package)
-		for mod in pairs(mods) do
+		for mod in pairs(modules(package)) do
 			if not docs[mod] and not blacklisted_module(mod) then
 				if include_submodules or not module_parent(package, mod) then
 					t[mod] = true
@@ -1072,7 +1173,7 @@ end
 --=========================================================================
 
 local luapower = {
-	--data acquisition
+	--info API
 	disk_files = disk_files,
 	known_packages = known_packages,
 	not_installed_packages = not_installed_packages,
@@ -1080,25 +1181,29 @@ local luapower = {
 		tracked_files = tracked_files,
 		docs = docs,
 			doc_tags = doc_tags,
+			doc_package = doc_package,
 		modules = modules,
 			module_parent = module_parent,
-			is_loadable_module = is_loadable_module,
-				module_require_list = module_require_list,
-				module_require_tree = module_require_tree,
-				module_deps = module_deps,
-				module_dep_list = module_dep_list,
-				module_tags = module_tags,
-				module_view_source_link = module_view_source_link,
-				module_doc_link = module_doc_link,
+			module_tree = module_tree,
+			module_package = module_package,
+			module_requires = module_requires,
+			module_requires_all  = module_requires_all,
+			module_requires_tree = module_requires_tree,
+			module_requires_ext  = module_requires_ext,
+			module_requires_packages_all = module_requires_packages_all,
+			module_requires_packages_ext = module_requires_packages_ext,
+			module_tags = module_tags,
+			module_source_url = module_source_url,
+			module_doc_url = module_doc_url,
+		package_doc_url = package_doc_url,
+		scripts = scripts,
 		c_tags = c_tags,
 		git_version = git_version,
 		git_tags = git_tags,
 		git_tag = git_tag,
 		platforms = platforms,
 		package_tags = package_tags,
-		module_tree = module_tree,
-		package_deps = package_deps,
-	module_package = module_package,
+	--links
 	external_refs = external_refs,
 	--toc file
 	toc_file = toc_file,
@@ -1241,10 +1346,9 @@ local function describe_package(package)
 	end
 
 	h'Overview'
-	local t = doc_tags(package, package)
-	local tagline = t and t.tagline or ''
-	print(string.format('  %-16s: %s', 'tagline', tagline))
-	print(string.format('  %-16s: %s', 'type',    package_tags(package) and package_tags(package).type))
+	local t = doc_tags(package, package) or {}
+	print(string.format('  %-16s: %s', 'tagline', t.tagline or ''))
+	print(string.format('  %-16s: %s', 'type', package_tags(package).type))
 	print(string.format('  %-16s: %s', 'tag', git_tag(package)))
 	print(string.format('  %-16s: %s', 'version', git_version(package)))
 	local t = glue.keys(platforms(package)); table.sort(t)
@@ -1253,10 +1357,9 @@ local function describe_package(package)
 	if next(modules(package)) then
 		h'Modules'
 		walk_tree(module_tree(package), function(node, level)
-			local t = doc_tags(package, node.name)
-			local tagline = t and t.tagline or ''
+			local dt = doc_tags(package, node.name) or {}
 			local mt = module_tags(package, node.name)
-			print(string.format('%-36s %-10s %s', ('  '):rep(level) .. '  * ' .. node.name, mt.kind, tagline))
+			print(string.format('%-36s %-10s %s', ('  '):rep(level) .. '  * ' .. node.name, mt.lang, dt.tagline or ''))
 		end)
 
 		h'Dependencies'
@@ -1283,6 +1386,11 @@ local function describe_package(package)
 		end
 	end
 
+	if next(scripts(package)) then
+		h'Scripts'
+		list_keys(scripts(package))
+	end
+
 	if c_tags(package) then
 		h'C Lib'
 		local t = c_tags(package)
@@ -1301,7 +1409,7 @@ local function describe_package(package)
 		print(sep)
 		for doc, path in glue.sortedpairs(docs(package)) do
 			local t = doc_tags(package, doc)
-			print(string.format(fmt, t.title, t.tagline))
+			print(string.format(fmt, t.title, t.tagline or ''))
 		end
 		print(sep)
 	end
@@ -1370,7 +1478,7 @@ local function list_mtags(package, mod)
 		end
 	else
 		local t = module_tags(package, mod)
-		print(string.format('%-16s %-24s %-16s %s', package, mod, t.lang, t.kind))
+		print(string.format('%-16s %-24s %s', package, mod, t.lang))
 	end
 end
 
@@ -1387,40 +1495,43 @@ add_action('known',    '', 'list all known package', keys_lister(known_packages)
 add_action('left',     '', 'list not yet installed packages', keys_lister(not_installed_packages))
 
 add_section'PACKAGE INFO'
-function package_type(...) return package_tags(...).type end
-add_action('type',     '[package]', 'package type', package_arg(package_lister(package_type)))
-add_action('ver',      '[package]', 'current git version', package_arg(package_lister(git_version)))
-add_action('tags',     '[package]', 'list git tags', package_arg(package_lister(git_tags, list_values, enum_values)))
-add_action('tag',      '[package]', 'current git tag', package_arg(package_lister(git_tag)))
-add_action('files',    '[package]', 'list tracked files', package_arg(keys_lister(tracked_files)))
-add_action('docs',     '[package]', 'list docs', package_arg(keys_lister(docs)))
-add_action('modules',  '[package]', 'list modules', package_arg(keys_lister(modules)))
-add_action('describe', '[package]', 'describe a package', package_arg(describe_package))
+local function package_type(...) return package_tags(...).type end
+add_action('describe',  '[package]', 'describe a package', package_arg(describe_package))
+add_action('type',      '[package]', 'package type', package_arg(package_lister(package_type)))
+add_action('ver',       '[package]', 'current git version', package_arg(package_lister(git_version)))
+add_action('tags',      '[package]', 'git tags', package_arg(package_lister(git_tags, list_values, enum_values)))
+add_action('tag',       '[package]', 'current git tag', package_arg(package_lister(git_tag)))
+add_action('files',     '[package]', 'tracked files', package_arg(keys_lister(tracked_files)))
+add_action('docs',      '[package]', 'docs', package_arg(keys_lister(docs)))
+add_action('modules',   '[package]', 'modules', package_arg(keys_lister(modules)))
+add_action('scripts',   '[package]', 'scripts', package_arg(keys_lister(scripts)))
+add_action('mtree',     '[package]', 'module tree', package_arg(tree_lister(module_tree)))
+add_action('mtags',     '[package [module]]',  'module info', package_arg(list_mtags))
+add_action('platforms', '[package]', 'supported platforms',
+			package_arg(package_lister(platforms, list_keys, enum_keys)))
+local function list_ctags(t) list_kv(t, {dependencies = enum_keys}) end
+add_action('ctags', '[package]', 'C package info', package_arg(package_lister(c_tags, list_ctags, enum_ctags)))
 
 add_section'CHECKS'
 add_action('check',        '[package]', 'consistency checks', package_arg(consistency_checks))
-add_action('trackable',    '',          'list trackable files', keys_lister(disk_files))
-add_action('multitracked', '',          'list files tracked by multiple packages', keys_lister(multitracked_files))
-add_action('untracked',    '',          'list files not tracked by any package', keys_lister(untracked_files))
+add_action('trackable',    '',          'trackable files', keys_lister(disk_files))
+add_action('multitracked', '',          'files tracked by multiple packages', keys_lister(multitracked_files))
+add_action('untracked',    '',          'files not tracked by any package', keys_lister(untracked_files))
 
-add_section'PACKAGE DB & TOC FILE'
+add_section'DATABASE'
 add_action('update-db',  '[package]', 'update '..PACKAGES_JSON, package_arg(update_package_db))
 add_action('update-toc', '[package]', 'update '..TOC_FILE, package_arg(update_toc_file))
 add_action('update',     '[package]', 'update both '..PACKAGES_JSON..' and '..TOC_FILE, package_arg(update_package))
 
-add_section'MODULES'
-add_action('mtree', '[package]',           'list modules as a tree', package_arg(tree_lister(module_tree)))
-add_action('mtags', '[package [module]]',  'module info', package_arg(list_mtags))
-add_action('rtree', '<module> [--sorted]', 'print the module require tree', tree_lister(module_require_tree))
-add_action('mdeps', '<module>',            'find module dependencies', values_lister(module_dep_list))
-add_action('pdeps', '[package [module]]',  'find package dependencies for packages or modules',
-			package_arg(package_lister(package_deps, list_keys, enum_keys)))
-
-add_section'C LIBS'
-add_action('platforms', '[package]', 'list supported platforms',
-			package_arg(package_lister(platforms, list_keys, enum_keys)))
-local function list_ctags(t) list_kv(t, {dependencies = enum_keys}) end
-add_action('ctags', '[package]', 'C package info', package_arg(package_lister(c_tags, list_ctags, enum_ctags)))
+add_section'DEPENDENCIES'
+add_action('requires', '<module>', 'direct module requires', keys_lister(module_requires))
+add_action('rall',     '<module>', 'direct and indirect module requires', keys_lister(module_requires_all))
+add_action('rtree',    '<module>', 'module require log tree', tree_lister(module_requires_tree))
+add_action('rext',     '<module>', 'direct-external module requires', keys_lister(module_requires_ext))
+add_action('pall',     '<module>', 'direct and indirect package dependencies', keys_lister(module_requires_packages_all))
+add_action('pext',     '<module>', 'direct-external package dependencies', keys_lister(module_requires_packages_ext))
+add_action('ppall',    '[package]', 'direct and indirect package dependencies', keys_lister(package_requires_packages_all))
+add_action('ppext',    '[package]', 'direct-external package dependencies', keys_lister(package_requires_packages_ext))
 
 local function run(action, ...)
 	action = action or 'help'
