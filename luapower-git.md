@@ -1,6 +1,6 @@
 ---
 project: luapower-git
-tagline: Git workflow for luapower
+tagline: git workflow for luapower
 ---
 
 ## What?
@@ -10,7 +10,7 @@ An automated way for downloading, managing and building luapower packages.
 ## Why not just use git directly?
 
 Mainly because luapower packages need to be overlaid over a single directory (all Lua modules from all packages
-must be in the same directory) but git repositories want to have their own separate directories by default.
+must be in the same directory) but git doesn't work like that by default, so it need to be made cooperative.
 
 ## How?
 
@@ -19,12 +19,10 @@ First, let's git it:
 	git clone ssh://git@github.com/luapower/luapower-git luapower
 	cd luapower
 
-This gets us the `clone` command (among others) which allows us to clone luapower packages easily.
-Let's use it to clone the dependencies needed for the `luapower` command (described below):
+This gets us the `clone` command (among others) which allows us to clone luapower packages easily:
 
-	clone lfs
 	clone glue
-	clone tuple
+	clone mysql
 
 > NOTE: In Linux, the command is `./clone.sh`.
 
@@ -48,7 +46,18 @@ integrates that information with the information about packages.
 It is also used for keeping the package database on luapower.com up to date, along with the navigation tree
 and the module/package dependency lists.
 
-So do check it out. Type `luapower` for usage.
+The `luapower` command depends on [lfs], [glue] and [tuple] so let's clone these first:
+
+	clone lfs
+	clone glue
+	clone tuple
+
+The rest you can learn from the tool itself:
+
+	luapower
+
+> Again, In Linux, the command is `./luapower.sh`.
+
 
 ## Building all the C libraries in one shot
 
@@ -69,6 +78,5 @@ or by setting the environment variable `GIT_DIR`. To ease the pain, the `proj` c
 `modified`             show modified files across all repos
 `unpushed`             show unpushed repos
 `untracked`            show untracked files (takes a while)
-`on-all <cmd ...>`     execute a command for each repo, each time setting `GIT_DIR` (eg. `on-all git status`)
 ---------------------- ------------------------------------------------
 

@@ -36,6 +36,7 @@ clone_all() {
 [ -f _git/$1.exclude ] || usage "unknown package $1"
 [ ! -d _git/$1/.git ] || usage "$1 already cloned"
 
+mkdir -p _git/$1
 export GIT_DIR=_git/$1/.git
 
 git init

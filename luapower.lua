@@ -1345,7 +1345,7 @@ local function list_mtags(package, mod)
 		for package in pairs(installed_packages()) do
 			list_mtags(package)
 		end
-	elseif not mod or mod == '*' then
+	elseif not mod or mod == '--all' then
 		for mod in pairs(modules(package)) do
 			list_mtags(package, mod)
 		end
@@ -1478,7 +1478,7 @@ local function help()
 	end
 	print''
 	print'The `package` arg defaults to the env var PROJECT, as set by the `proj` command,'
-	print'and if that is not set, it defaults to `*`, meaning all packages.'
+	print'and if that is not set, it defaults to `--all`, meaning all packages.'
 	print''
 end
 
@@ -1493,13 +1493,13 @@ end
 --wrapper for command handlers that take <package> as arg#1 -- provides its default value.
 local function package_arg(handler, package_required)
 	return function(package, ...)
-		if package == '*' then
+		if package == '--all' then
 			package = nil
 		else
 			package = package or os.getenv'PROJECT'
 		end
 		assert_arg(package or not package_required, 'package required')
-		assert_arg(not package or installed_packages()[package], 'unknown package')
+		assert_arg(not package or installed_packages()[package], 'unknown package '..tostring(package))
 		return handler(package, ...)
 	end
 end

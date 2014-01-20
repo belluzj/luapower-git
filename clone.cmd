@@ -8,7 +8,6 @@ if not exist _git/%1.exclude goto unknown_package
 if exist _git/%1/.git/ goto already_cloned
 
 md _git\%1
-
 set GIT_DIR=_git/%1/.git
 
 git init
