@@ -507,7 +507,7 @@ end)
 --reverse lookup of a package from a doc
 local doc_package = function(doc)
 	--shortcut: package doc
-	if docs(doc)[doc] then
+	if installed_packages()[doc] and docs(doc)[doc] then
 		return doc
 	end
 	--the slow way: look in all packages for the doc
