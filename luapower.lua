@@ -643,7 +643,7 @@ local function package_deps_(mod, package, add_dep_c_deps, module_deps)
 	end
 	for mod in pairs(module_deps) do
 		local dep_package = module_package(mod)
-		assert(dep_package or builtin_modules[mod] or not is_module(mod))
+		assert(dep_package or builtin_modules[mod] or not is_module(mod), 'package not found for ' .. mod)
 		if dep_package and dep_package ~= package then
 			deps[dep_package] = true
 		end
@@ -1092,8 +1092,9 @@ end)
 --check for csrc dir not matching package name
 local nonstandard_csrc_dir = memoize_package(function(package)
 	local t = {}
-	if csrc_dir(package) and csrc_dir(package) ~= package then
-		t[csrc_dir] = true
+	local dir = csrc_dir(package)
+	if dir and dir ~= 'csrc/'..package then
+		t[dir] = true
 	end
 	return t
 end)
