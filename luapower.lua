@@ -960,6 +960,7 @@ local function write_toc_file(toc_tree)
 		f:write(('\t'):rep(level) .. '* ' .. s .. '\n')
 	end)
 	f:close()
+	os.execute('sh _site/convert.sh _site/toc.md')
 end
 
 local toc_file = memoize(parse_toc_file)
