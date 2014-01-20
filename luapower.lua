@@ -645,6 +645,7 @@ local c_deps = memoize_package(function(package)
 			end
 			if deps[dep] then
 				print(string.format('WARNING: circular C dependency in %s: %s', package, dep))
+			else
 				deps[dep] = true
 				add_deps(dep)
 			end
