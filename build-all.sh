@@ -5,7 +5,6 @@
 [ "$CXXFLAGS" ] || export CXXFLAGS="$CFLAGS -static-libstdc++"
 
 indep_packages="
-luajit
 blur
 chipmunk
 clipper
@@ -19,6 +18,7 @@ libb64
 libexif
 libjpeg
 libunibreak
+luajit
 md5
 nanojpeg
 pixman
@@ -26,6 +26,7 @@ pmurhash
 sha2
 ucdn
 zlib
+freetype
 "
 
 luajit_packages="
@@ -42,7 +43,6 @@ wluajit
 zlib_packages="
 minizip
 libpng
-freetype
 "
 
 png_packages="

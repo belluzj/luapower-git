@@ -633,24 +633,40 @@ local module_requires_ext = memoize(function(mod, package)
 	return t
 end)
 
+--direct and indirect C dependencies of a package
+local c_deps = memoize_package(function(package)
+	local deps = {}
+	local function add_deps(package)
+		local cdeps = c_tags(package) and c_tags(package).dependencies
+		if not cdeps then return end
+		for dep in pairs(cdeps) do
+			if not known_packages()[dep] then
+				print(string.format('WARNING: invalid C dependency in %s: %s', package, dep))
+			end
+			if deps[dep] then
+				print(string.format('WARNING: circular C dependency in %s: %s', package, dep))
+				deps[dep] = true
+				add_deps(dep)
+			end
+		end
+	end
+	add_deps(package)
+	return deps
+end)
+
 --package deps from a module_requires_* result table
 local function package_deps_(mod, package, add_dep_c_deps, module_deps)
 	package = package or module_package(mod)
 	local deps = {}
-	--add declared C deps to the mix (C deps apply to all modules in the package)
-	if c_tags(package) and c_tags(package).dependencies then
-		glue.update(deps, c_tags(package).dependencies)
-	end
+	--add C deps to the mix (C deps apply to all modules in the package)
+	glue.update(deps, c_deps(package))
 	for mod in pairs(module_deps) do
 		local dep_package = module_package(mod)
 		assert(dep_package or builtin_modules[mod] or not is_module(mod), 'package not found for ' .. mod)
 		if dep_package and dep_package ~= package then
 			deps[dep_package] = true
-		end
-		if add_dep_c_deps then
-			--add declared C deps to the mix (C deps apply to all modules in the package)
-			if c_tags(dep_package) and c_tags(dep_package).dependencies then
-				glue.update(deps, c_tags(dep_package).dependencies)
+			if add_dep_c_deps then
+				glue.update(deps, c_deps(dep_package))
 			end
 		end
 	end
@@ -685,6 +701,18 @@ local package_requires_packages_ext = memoize_package(function(package)
 	return deps
 end)
 
+--all modules that depend on a module
+local module_required_all = memoize(function(mod)
+	local t = {}
+	for package in pairs(installed_packages()) do
+		for dmod in pairs(modules(package)) do
+			if module_requires(dmod)[mod] then
+				t[dmod] = true
+			end
+		end
+	end
+	return t
+end)
 
 --analytic info
 ---------------------------------------------------------------------------
@@ -1188,11 +1216,13 @@ local luapower = {
 			module_requires_ext  = module_requires_ext,
 			module_requires_packages_all = module_requires_packages_all,
 			module_requires_packages_ext = module_requires_packages_ext,
+			module_required_all = module_required_all,
 			module_tags = module_tags,
 			module_source_url = module_source_url,
 			module_doc_url = module_doc_url,
 		scripts = scripts,
 		c_tags = c_tags,
+		c_deps = c_deps,
 		git_version = git_version,
 		git_tags = git_tags,
 		git_tag = git_tag,
@@ -1518,6 +1548,8 @@ add_action('pall',     '<module>', 'direct and indirect package dependencies', k
 add_action('pext',     '<module>', 'direct-external package dependencies', keys_lister(module_requires_packages_ext))
 add_action('ppall',    '[package]', 'direct and indirect package dependencies', keys_lister(package_requires_packages_all))
 add_action('ppext',    '[package]', 'direct-external package dependencies', keys_lister(package_requires_packages_ext))
+add_action('cdeps',    '[package]', 'direct and indirect C dependencies', keys_lister(c_deps))
+add_action('rrev',     '<module>', 'all modules that require a module', keys_lister(module_required_all))
 
 local function run(action, ...)
 	action = action or 'help'
