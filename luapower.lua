@@ -111,7 +111,7 @@ end
 
 --read a cmd output to a line iterator
 local function pipe_lines(cmd)
-	local f = assert(io.popen(cmd, 'rb'))
+	local f = assert(io.popen(cmd, 'r'))
 	f:setvbuf('full')
 	return coroutine.wrap(function()
 		for line in f:lines() do
