@@ -14,4 +14,4 @@ export GIT_DIR="_git/$1/.git"
 echo "tracking $1"
 git status -s
 echo
-PS1="[$1] $PS1" bash -i
+PS1="[$1] \u@\h:\w\$ " bash -i
