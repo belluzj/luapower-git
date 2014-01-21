@@ -146,7 +146,7 @@ end
 
 --path/*.dll|.so -> C module name
 local function c_module_name(path)
-	local ext = package.cpath:match'%?%.(.-);'
+	local ext = package.cpath:match'%?%.(.-);?$'
 	local name = path:match('bin/[^/]+/clib/(.-)%.'..ext..'$')
 	return name and name:gsub('/', '.')
 end
