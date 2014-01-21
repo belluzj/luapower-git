@@ -72,8 +72,7 @@ end
 local lfs = require'lfs'
 local glue = require'glue'
 local tuple = require'tuple'
---also, cjson is a runtime dependency for building the package db.
---also, pp is a runtime dependency for inspect()
+--NOTE: cjson is a runtime dependency, used only for building the package db.
 
 
 --filesystem reader
@@ -146,7 +145,7 @@ end
 
 --path/*.dll|.so -> C module name
 local function c_module_name(path)
-	local ext = package.cpath:match'%?%.(.-);?$'
+	local ext = package.cpath:match'%?%.([^;]+)'
 	local name = path:match('bin/[^/]+/clib/(.-)%.'..ext..'$')
 	return name and name:gsub('/', '.')
 end
@@ -713,22 +712,9 @@ local module_required_all = memoize(function(mod)
 	return t
 end)
 
+
 --analytic info
 ---------------------------------------------------------------------------
-
---analytic info for a package
-local package_type = memoize(function(package)
-	local has_c = csrc_dir(package) and true or false
-	local has_lua = next(modules(package)) and true or false
-	local has_ffi = false
-	for mod in pairs(modules(package)) do
-		if module_requires_all(mod).ffi then
-			has_ffi = true
-			break
-		end
-	end
-	return has_ffi and 'Lua+ffi' or has_lua and (has_c and 'Lua/C' or 'Lua') or has_c and 'C' or 'other'
-end)
 
 --analytic info for a module
 local module_tags = memoize(function(package, mod)
@@ -740,6 +726,29 @@ local module_tags = memoize(function(package, mod)
 		demo_module = scripts(package)[mod..'_demo'] and mod..'_demo',
 		test_module = scripts(package)[mod..'_test'] and mod..'_test',
 	}
+end)
+
+--analytic info for a package
+local package_type = memoize(function(package)
+	local has_c = csrc_dir(package) and true or false
+	local has_mod = next(modules(package)) and true or false
+	local has_mod_lua = false
+	local has_mod_c = false
+	local has_ffi = false
+	for mod in pairs(modules(package)) do
+		if module_tags(package, mod).lang == 'C' then
+			has_mod_c = true
+		else
+			has_mod_lua = true
+		end
+		if module_requires_all(mod).ffi then
+			has_ffi = true
+			break
+		end
+	end
+	assert(not has_ffi or has_mod_lua) --ffi modules are written in Lua
+	assert(not has_mod_c or has_c) --Lua/C modules without source?
+	return has_ffi and 'Lua+ffi' or has_mod and (has_mod_c and 'Lua/C' or 'Lua') or has_c and 'C' or 'other'
 end)
 
 

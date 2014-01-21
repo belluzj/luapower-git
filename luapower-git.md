@@ -9,8 +9,9 @@ An automated way for downloading, managing and building luapower packages.
 
 ## Why not just use git directly?
 
-Mainly because luapower packages need to be overlaid over a single directory (all Lua modules from all packages
-must be in the same directory) but git doesn't work like that by default, so it need to be made cooperative.
+Mainly because luapower packages need to be overlaid over the same directory, and you can't easily clone multiple
+repos over the same directory with git. Git _does_ support overlaying multiple repos over a common directory structure
+but that's [not trivial][clone.cmd] to set up, which is where [luapower-git] comes handy.
 
 ## How?
 
@@ -65,6 +66,7 @@ The rest you can learn from the tool itself:
 
 This builds all packages that have a build script in the right order.
 
+
 ## Module development
 
 > This section is only interesting if you wish to get involved in developing luapower modules.
@@ -80,3 +82,4 @@ or by setting the environment variable `GIT_DIR`. To ease the pain, the `proj` c
 `untracked`            show untracked files (takes a while)
 ---------------------- ------------------------------------------------
 
+[clone.cmd]:         http://github.com/luapower/luapower-git/blob/master/clone.cmd
