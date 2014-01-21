@@ -542,11 +542,12 @@ end)
 local platforms = memoize_package(function(package)
 	--platforms are inferred from the name of the build script
 	local t = {}
-	if not csrc_dir(package) then return t end
-	for path in pairs(tracked_files(package)) do
-		local platform = path:match('^'..glue.escape(csrc_dir(package)..'/build-')..'(.-)%.sh$')
-		if platform then
-			t[platform] = true
+	if csrc_dir(package) then
+		for path in pairs(tracked_files(package)) do
+			local platform = path:match('^'..glue.escape(csrc_dir(package)..'/build-')..'(.-)%.sh$')
+			if platform then
+				t[platform] = true
+			end
 		end
 	end
 	--platforms can also be specified in the 'platforms' tag of the package doc file
