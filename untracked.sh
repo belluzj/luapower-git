@@ -14,13 +14,16 @@ root_files() {
 		&& [ "$ext" != "tmp" ] \
 		&& [ "$ext" != "sh" ] \
 		&& [ "$ext" != "cmd" ] \
-		&& [ "${f#_}" == "$f" ] \
+		&& [ "${f#_}" = "$f" ] \
+		&& [ "$f" != "luapower.lua" ] \
+		&& [ "$f" != "luapower-git.md" ] \
 		&& echo "$f"
 	done
 }
 
 existing_files() {
-	/bin/find $(root_files) -type f -print | sort | uniq -u
+	[ "$(root_files)" ] && \
+		/usr/bin/find $(root_files) -type f -print | sort | uniq -u
 }
 
 rm -f untracked.*.tmp

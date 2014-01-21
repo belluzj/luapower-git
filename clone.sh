@@ -30,8 +30,8 @@ clone_all() {
 }
 
 [ "$1" ] || usage
-[ "$1" == "--all" ] && { clone_all; exit; }
-[ "$1" == "--list" ] && { list_uncloned; exit; }
+[ "$1" = "--all" ] && { clone_all; exit; }
+[ "$1" = "--list" ] && { list_uncloned; exit; }
 
 [ -f _git/$1.exclude ] || usage "unknown package $1"
 [ ! -d _git/$1/.git ] || usage "$1 already cloned"
@@ -40,8 +40,8 @@ mkdir -p _git/$1
 export GIT_DIR=_git/$1/.git
 
 git init
-git config --local core.worktree ../../..
-git config --local core.excludesfile _git/$1.exclude
+git config -f $GIT_DIR/config core.worktree ../../..
+git config -f $GIT_DIR/config core.excludesfile _git/$1.exclude
 mkdir -p $GIT_DIR/hooks && \
 	cp -f _git/pre-commit _git/post-commit $GIT_DIR/hooks/
 git remote add origin "ssh://git@github.com/luapower/$1.git"
