@@ -42,8 +42,7 @@ export GIT_DIR=_git/$1/.git
 git init
 git config -f $GIT_DIR/config core.worktree ../../..
 git config -f $GIT_DIR/config core.excludesfile _git/$1.exclude
-mkdir -p $GIT_DIR/hooks && \
-	cp -f _git/pre-commit _git/post-commit $GIT_DIR/hooks/
+# mkdir -p $GIT_DIR/hooks && cp -f _git/pre-commit _git/post-commit $GIT_DIR/hooks/
 git remote add origin "ssh://git@github.com/luapower/$1.git"
 git fetch
 git branch --track master origin/master

@@ -9,9 +9,10 @@ An automated way for downloading, managing and building luapower packages.
 
 ## Why not just use git directly?
 
-Mainly because luapower packages need to be overlaid over the same directory, and you can't easily clone multiple
-repos over the same directory with git. Git _does_ support overlaying multiple repos over a common directory structure
-but that's [not trivial][clone.cmd] to set up, which is where [luapower-git] comes handy.
+Mainly because luapower packages need to be overlaid over the same directory, but you can't just git-clone multiple
+repos over the same directory with git (for no reason- git-clone could and should totally allow you to do that).
+Git _does_ support overlaying multiple repos over a common directory structure but that's [not trivial][clone.cmd]
+to set up, and that is where [luapower-git] comes in.
 
 ## How?
 
@@ -24,8 +25,9 @@ This gets us the `clone` command (among others) which allows us to clone luapowe
 
 	clone glue
 	clone mysql
+	...
 
-> NOTE: In Linux, the command is `./clone.sh`.
+> In Linux, the command is `./clone.sh`
 
 ## Package management
 
@@ -47,8 +49,9 @@ integrates that information with the information about packages.
 It is also used for keeping the package database on luapower.com up to date, along with the navigation tree
 and the module/package dependency lists.
 
-The `luapower` command depends on [lfs], [glue] and [tuple] so let's clone these first:
+The `luapower` command is a Lua script that depends on [luajit], [lfs], [glue] and [tuple] so let's clone these first:
 
+	clone luajit
 	clone lfs
 	clone glue
 	clone tuple
@@ -57,7 +60,7 @@ The rest you can learn from the tool itself:
 
 	luapower
 
-> Again, In Linux, the command is `./luapower.sh`.
+> Again, In Linux, the command is `./luapower.sh`
 
 
 ## Building all the C libraries in one shot
