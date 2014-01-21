@@ -72,7 +72,7 @@ end
 local lfs = require'lfs'
 local glue = require'glue'
 local tuple = require'tuple'
---NOTE: cjson is a runtime dependency, used only for building the package db.
+--NOTE: cjson and pp are runtime dependencies, used only for building the package db.
 
 
 --filesystem reader
@@ -806,6 +806,7 @@ end)
 --=========================================================================
 
 local PACKAGES_JSON = '_site/packages.json'
+local PACKAGES_LSON = '_site/packages.lua'
 
 local function link(text, url) --a link object to be used in json (url is optional)
 	return {text, url}
@@ -882,6 +883,8 @@ end
 local function write_package_db(db)
 	local cjson = require'cjson'
 	glue.writefile(PACKAGES_JSON, cjson.encode(db))
+	local pp = require'pp'
+	pp.fwrite(PACKAGES_LSON, db, '\t', {})
 end
 
 local function rebuild_package_db()
