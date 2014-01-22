@@ -1,2 +1,2 @@
 #!/bin/sh
-exec ./luajit.sh luapower.lua "$@"
+exec ./luajit luapower.lua "$@"
