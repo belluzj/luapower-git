@@ -13,6 +13,7 @@ if exist _git/%_remote%.remote (
 ) else (set _url=%_remote%)
 
 md _git\%1
+set _GIT_DIR=%GIT_DIR%
 set GIT_DIR=_git/%1/.git
 
 git init
@@ -23,7 +24,7 @@ git fetch
 git branch --track master origin/master
 git checkout
 
-proj %1
+set GIT_DIR=%_GIT_DIR%
 goto end
 
 :clone_all
