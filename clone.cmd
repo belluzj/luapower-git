@@ -1,5 +1,5 @@
 @echo off
-rem clone a package (or all packages) from origin, or list uncloned packages
+rem clone a package (or all packages) from remote, or list uncloned packages
 
 if [%1] == [] goto usage
 if [%1] == [--all] goto clone_all
@@ -7,10 +7,10 @@ if [%1] == [--list] goto list_uncloned
 
 if not exist _git/%1.exclude goto unknown_package
 if exist _git/%1/.git/ goto already_cloned
-if [%2] == [] (set _origin=default) else (set _origin=%2)
-if exist _git/%_origin%.origin (
-	for /f "delims=" %%s in (_git/%_origin%.origin) do set _url=%%s/%1
-) else (set _url=%_origin%)
+if [%2] == [] (set _remote=default) else (set _remote=%2)
+if exist _git/%_remote%.remote (
+	for /f "delims=" %%s in (_git/%_remote%.remote) do set _url=%%s/%1
+) else (set _url=%_remote%)
 
 md _git\%1
 set GIT_DIR=_git/%1/.git
@@ -27,7 +27,7 @@ proj %1
 goto end
 
 :clone_all
-for /f "delims=" %%p in ('clone --list') do clone %%p
+for /f "delims=" %%p in ('clone --list') do call clone %%p
 goto end
 
 :list_uncloned
@@ -43,7 +43,7 @@ goto end
 :usage
 echo.
 echo USAGE:
-echo    %0 ^<package^> ^[origin ^| url^]    clone a package
+echo    %0 ^<package^> ^[remote ^| url^]    clone a package
 echo    %0 --list                      list uncloned packages
 echo    %0 --all                       clone all packages
 echo.

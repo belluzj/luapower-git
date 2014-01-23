@@ -1,5 +1,5 @@
 #!/bin/sh
-# clone a package (or all packages) from origin, or list uncloned packages
+# clone a package (or all packages) from remote, or list uncloned packages
 
 usage() {
 	[ "$@" ] && {
@@ -8,7 +8,7 @@ usage() {
 	}
 	echo
 	echo "USAGE:"
-	echo "   $0 <package> [origin | url]    clone a package"
+	echo "   $0 <package> [remote | url]    clone a package"
 	echo "   $0 --list                      list uncloned packages"
 	echo "   $0 --all                       clone all packages"
 	echo
@@ -32,8 +32,8 @@ clone_all() {
 [ "$1" ] || usage
 [ "$1" = "--all" ] && { clone_all; exit; }
 [ "$1" = "--list" ] && { list_uncloned; exit; }
-[ "$2" ] && origin="$2" || origin=default
-[ -f _git/$origin.origin ] && url=$(cat _git/$origin.origin)/$1 || url=$origin
+[ "$2" ] && remote="$2" || remote=default
+[ -f _git/$remote.remote ] && url=$(cat _git/$remote.remote)/$1 || url=$remote
 
 [ -f _git/$1.exclude ] || usage "unknown package $1"
 [ ! -d _git/$1/.git ] || usage "$1 already cloned"
