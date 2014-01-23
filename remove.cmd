@@ -28,7 +28,11 @@ echo ERROR: unknown package %1
 goto usage
 
 :list_cloned
-for /d %%f in (_git/*) do echo %%f
+for /d %%f in (_git/*) do call :check_cloned %%f
+goto end
+
+:check_cloned
+if exist _git/%1/.git/ echo %1
 goto end
 
 :usage

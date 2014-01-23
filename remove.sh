@@ -2,24 +2,30 @@
 # uninstall a package: remove all the files, any empty directories left behind and the git repo.
 
 usage() {
+	[ "$@" ] && {
+		echo
+		echo "ERROR: $@"
+	}
 	echo
 	echo "USAGE:"
-	echo "   $0 <package>       remove a cloned package completely from the disk"
-	echo "   $0 --list          list cloned packages"
+	echo "   $0 <package>    remove a cloned package completely from the disk"
+	echo "   $0 --list       list cloned packages"
 	echo
 	exit 1
 }
 
-package="$1"
-[ "$package" ] || usage
-
-[ -d "_git/$package/.git" ] || {
-	echo
-	echo "ERROR: unknown package $1"
-	usage
+list_cloned() {
+	(cd _git
+	for f in *; do
+		[ -d "$f/.git" ] && echo "$f"
+	done)
 }
 
-files="$(GIT_DIR=_git/$package/.git git ls-files)"
+[ "$1" ] || usage
+[ "$1" = "--list" ] && { list_cloned; exit; }
+[ -d "_git/$1/.git" ] || usage "unknown package $1"
+
+files="$(GIT_DIR=_git/$1/.git git ls-files)"
 
 # remove files
 for file in $files; do
@@ -34,4 +40,5 @@ done | uniq | while read dir; do
 done
 
 # remove the git dir
-rm -rf _git/$package
+rm -rf _git/$1/.git
+rmdir _git/$1

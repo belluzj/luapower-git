@@ -1,5 +1,5 @@
 #!/bin/sh
-# clone a package (or all packages) from github, or list uncloned packages
+# clone a package (or all packages) from origin, or list uncloned packages
 
 usage() {
 	[ "$@" ] && {
@@ -8,19 +8,19 @@ usage() {
 	}
 	echo
 	echo "USAGE:"
-	echo "   clone <package>        clone a package"
-	echo "   clone --list           list uncloned packages"
-	echo "   clone --all            clone all packages"
+	echo "   $0 <package> [origin | url]    clone a package"
+	echo "   $0 --list                      list uncloned packages"
+	echo "   $0 --all                       clone all packages"
 	echo
 	exit 1
 }
 
 list_uncloned() {
-	for f in _git/*.exclude; do
-		f=${f#_git/}
+	(cd _git
+	for f in *.exclude; do
 		f=${f%.exclude}
-		[ ! -d _git/$f/.git ] && echo $f
-	done
+		[ ! -d $f/.git ] && echo $f
+	done)
 }
 
 clone_all() {
@@ -32,6 +32,8 @@ clone_all() {
 [ "$1" ] || usage
 [ "$1" = "--all" ] && { clone_all; exit; }
 [ "$1" = "--list" ] && { list_uncloned; exit; }
+[ "$2" ] && origin="$2" || origin=default
+[ -f _git/$origin.origin ] && url=$(cat _git/$origin.origin)/$1 || url=$origin
 
 [ -f _git/$1.exclude ] || usage "unknown package $1"
 [ ! -d _git/$1/.git ] || usage "$1 already cloned"
@@ -42,8 +44,7 @@ export GIT_DIR=_git/$1/.git
 git init
 git config -f $GIT_DIR/config core.worktree ../../..
 git config -f $GIT_DIR/config core.excludesfile _git/$1.exclude
-# mkdir -p $GIT_DIR/hooks && cp -f _git/pre-commit _git/post-commit $GIT_DIR/hooks/
-git remote add origin "ssh://git@github.com/luapower/$1.git"
+git remote add origin $url
 git fetch
 git branch --track master origin/master
 git checkout
