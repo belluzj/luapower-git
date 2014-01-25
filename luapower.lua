@@ -322,11 +322,11 @@ end)
 --packages and their files
 ---------------------------------------------------------------------------
 
---_git/<name>.exclude -> {name = true}
+--_git/<name>.origin -> {name = true}
 local known_packages = memoize(function()
 	local t = {}
 	for f in dir('_git') do
-		local s = f:match'^(.-)%.exclude$'
+		local s = f:match'^(.-)%.origin$'
 		if s then t[s] = true end
 	end
 	return t
@@ -802,122 +802,6 @@ local package_doc_url = memoize(function(package)
 end)
 
 
---building and updating the package database
---=========================================================================
-
-local PACKAGES_JSON = '_site/packages.json'
-local PACKAGES_LSON = '_site/packages.lua'
-
-local function link(text, url) --a link object to be used in json (url is optional)
-	return {text, url}
-end
-
-local function module_name_cmp(a, b) --comparison function for table.sort() for modules: sorts built-ins first
-	if builtin_modules[a] == builtin_modules[b] then
-		--if a and be are in the same class, compare their names
-		return a < b
-	else
-		--compare classes (std. vs non-std. module)
-		return not builtin_modules[b]
-	end
-end
-
-local function module_dep_links(package, mod)
-	local t = {}
-	for dep in pairs(module_requires_ext(mod, package)) do
-		local dep_package = module_package(dep)
-		table.insert(t, link(dep, module_doc_url(dep_package, dep)))
-	end
-	table.sort(t, function(a, b) return module_name_cmp(a[1], b[1]) end)
-	return t
-end
-
-local function package_dep_links(package, mod)
-	local t = {}
-	local deps = mod and
-		module_requires_packages_ext(mod, package) or
-		package_requires_packages_ext(package)
-	for dep in pairs(deps) do
-		table.insert(t, link(dep, package_doc_url(dep)))
-	end
-	table.sort(t, function(a, b) return a[1] < b[1] end) --sort by link text
-	return t
-end
-
-local function package_record(package)
-	local modt = {}
-	for mod in pairs(modules(package)) do
-		if docs(package)[mod] then
-			local tags = module_tags(package, mod)
-			modt[mod] = {
-				source_link = link('source', module_source_url(package, mod)),
-				test_link = tags.test_module and link('test', module_doc_url(package, tags.test_module)),
-				demo_link = tags.demo_module and link('demo', module_doc_url(package, tags.demo_module)),
-				mdep_links = module_dep_links(package, mod),
-				pdep_links = package_dep_links(package, mod),
-			}
-		end
-	end
-	local ptype = package_type(package)
-	local dtags = doc_tags(package, package) or {}
-	local ctags = c_tags(package) or {}
-	return {
-		name = package,
-		tagline = dtags.tagline,
-		link = link(package, package_doc_url(package)),
-		--category = doc_category(package),
-		type = ptype,
-		--git_version = git_version(package),
-		git_tag = git_tag(package),
-		c_link = ctags.realname and link(ctags.realname .. ' ' .. ctags.version, ctags.url),
-		--c_realname = ctags.realname,
-		--c_version = ctags.version,
-		--c_url = ctags.url,
-		c_license = ctags.license,
-		platforms = platforms(package),
-		--pdep_links = package_dep_links(package),
-		modules = modt,
-	}
-end
-
-local function write_package_db(db)
-	local cjson = require'cjson'
-	glue.writefile(PACKAGES_JSON, cjson.encode(db))
-	local pp = require'pp'
-	pp.fwrite(PACKAGES_LSON, db, '\t', {})
-end
-
-local function rebuild_package_db()
-	local db = {}
-	for package in pairs(installed_packages()) do
-		print(package..'...')
-		db[package] = package_record(package)
-	end
-	write_package_db(db)
-end
-
---get packages db
-local package_db = memoize(function()
-	local cjson = require'cjson'
-	if not glue.fileexists(PACKAGES_JSON) then
-		rebuild_package_db()
-	end
-	return cjson.decode(glue.readfile(PACKAGES_JSON))
-end)
-
---update a package in the json file and rewrite the file
-local function update_package_db(package)
-	if package then
-		local cjson = require'cjson'
-		local db = package_db()
-		db[package] = package_record(package)
-		write_package_db(db)
-	else
-		rebuild_package_db()
-	end
-end
-
-
 --building and updating the category tree
 --=========================================================================
 
@@ -1043,11 +927,14 @@ local doc_category = memoize(function(doc, separator)
 	local parents = {}
 	local last_level = 0
 	local found
+	local i = 0
 	walk_tree(toc_file(), function(node, level, parent)
 		if found then return end
 		if level > last_level then
-			table.insert(parents, parent)
+			i = i + 1
+			table.insert(parents, parent.name)
 		elseif level < last_level then
+			i = i + 1
 			table.remove(parents)
 		end
 		if node.doc == doc then
@@ -1055,16 +942,142 @@ local doc_category = memoize(function(doc, separator)
 		end
 		last_level = level
 	end)
-	if found then
-		local t = {}
-		for i,p in ipairs(parents) do
-			t[#t+1] = p.name
-		end
-		return table.concat(t, separator)
-	else
-		return 'Other'
-	end
+	return found and string.format('%02d', i) .. '. ' .. table.concat(parents, separator) or 'Other'
 end)
+
+local doc_categories = memoize(function(separator)
+	separator = separator or ' > '
+	local parents = {}
+	local last_level = 0
+	walk_tree(toc_file(), function(node, level, parent)
+		if level > last_level then
+			table.insert(parents, parent.name)
+		elseif level < last_level then
+			table.remove(parents)
+		else
+			print(table.concat(parents, separator))
+		end
+		last_level = level
+	end)
+end)
+
+--require'pp'.pp(doc_category('oo'))
+--os.exit(1)
+
+--building and updating the package database
+--=========================================================================
+
+local PACKAGES_JSON = '_site/packages.json'
+local PACKAGES_LSON = '_site/packages.lua'
+
+local function link(text, url) --a link object to be used in json (url is optional)
+	return {text, url}
+end
+
+local function module_name_cmp(a, b) --comparison function for table.sort() for modules: sorts built-ins first
+	if builtin_modules[a] == builtin_modules[b] then
+		--if a and be are in the same class, compare their names
+		return a < b
+	else
+		--compare classes (std. vs non-std. module)
+		return not builtin_modules[b]
+	end
+end
+
+local function module_dep_links(package, mod)
+	local t = {}
+	for dep in pairs(module_requires_ext(mod, package)) do
+		local dep_package = module_package(dep)
+		table.insert(t, link(dep, module_doc_url(dep_package, dep)))
+	end
+	table.sort(t, function(a, b) return module_name_cmp(a[1], b[1]) end)
+	return t
+end
+
+local function package_dep_links(package, mod)
+	local t = {}
+	local deps = mod and
+		module_requires_packages_ext(mod, package) or
+		package_requires_packages_ext(package)
+	for dep in pairs(deps) do
+		table.insert(t, link(dep, package_doc_url(dep)))
+	end
+	table.sort(t, function(a, b) return a[1] < b[1] end) --sort by link text
+	return t
+end
+
+local function package_record(package)
+	local modt = {}
+	for mod in pairs(modules(package)) do
+		if docs(package)[mod] then
+			local tags = module_tags(package, mod)
+			modt[mod] = {
+				source_link = link('source', module_source_url(package, mod)),
+				test_link = tags.test_module and link('test', module_doc_url(package, tags.test_module)),
+				demo_link = tags.demo_module and link('demo', module_doc_url(package, tags.demo_module)),
+				mdep_links = module_dep_links(package, mod),
+				pdep_links = package_dep_links(package, mod),
+			}
+		end
+	end
+	local ptype = package_type(package)
+	local dtags = doc_tags(package, package) or {}
+	local ctags = c_tags(package) or {}
+	return {
+		name = package,
+		tagline = dtags.tagline,
+		link = link(package, package_doc_url(package)),
+		category = doc_category(package),
+		type = ptype,
+		--git_version = git_version(package),
+		git_tag = git_tag(package),
+		c_link = ctags.realname and link(ctags.realname .. ' ' .. ctags.version, ctags.url),
+		--c_realname = ctags.realname,
+		--c_version = ctags.version,
+		--c_url = ctags.url,
+		c_license = ctags.license,
+		platforms = platforms(package),
+		--pdep_links = package_dep_links(package),
+		modules = modt,
+	}
+end
+
+local function write_package_db(db)
+	local cjson = require'cjson'
+	glue.writefile(PACKAGES_JSON, cjson.encode(db))
+	local pp = require'pp'
+	pp.fwrite(PACKAGES_LSON, db, '\t', {})
+end
+
+local function rebuild_package_db()
+	local db = {}
+	for package in pairs(installed_packages()) do
+		print(package..'...')
+		db[package] = package_record(package)
+	end
+	write_package_db(db)
+end
+
+--get packages db
+local package_db = memoize(function()
+	local cjson = require'cjson'
+	if not glue.fileexists(PACKAGES_JSON) then
+		rebuild_package_db()
+	end
+	return cjson.decode(glue.readfile(PACKAGES_JSON))
+end)
+
+--update a package in the json file and rewrite the file
+local function update_package_db(package)
+	if package then
+		local cjson = require'cjson'
+		local db = package_db()
+		db[package] = package_record(package)
+		write_package_db(db)
+	else
+		rebuild_package_db()
+	end
+end
 
 
 --consistency checks

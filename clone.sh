@@ -8,7 +8,7 @@ usage() {
 	}
 	echo
 	echo "USAGE:"
-	echo "   $0 <package> [remote | url]    clone a package"
+	echo "   $0 <package> [origin | url]    clone a package"
 	echo "   $0 --list                      list uncloned packages"
 	echo "   $0 --all                       clone all packages"
 	echo
@@ -17,8 +17,8 @@ usage() {
 
 list_uncloned() {
 	(cd _git
-	for f in *.exclude; do
-		f=${f%.exclude}
+	for f in *.origin; do
+		f=${f%.origin}
 		[ ! -d $f/.git ] && echo $f
 	done)
 }
@@ -32,11 +32,23 @@ clone_all() {
 [ "$1" ] || usage
 [ "$1" = "--all" ] && { clone_all; exit; }
 [ "$1" = "--list" ] && { list_uncloned; exit; }
-[ "$2" ] && remote="$2" || remote=default
-[ -f _git/$remote.remote ] && url=$(cat _git/$remote.remote)/$1 || url=$remote
 
-[ -f _git/$1.exclude ] || usage "unknown package $1"
 [ ! -d _git/$1/.git ] || usage "$1 already cloned"
+
+if [ "$2" = "" ]; then
+	[ -f "_git/$1.origin" ] || usage "unknown origin for $1"
+	origin=$(cat _git/$1.origin)
+	[ -f _git/$origin.baseurl ] || usage "missing origin url for origin $origin"
+	baseurl=$(cat _git/$origin.baseurl)
+	url=$baseurl$1
+else
+	if [ -f "_git/$2.baseurl" ]; then
+		baseurl=$(cat _git/$2.baseurl)
+		url=$baseurl$1
+	else
+		url="$2"
+	fi
+fi
 
 mkdir -p _git/$1
 export GIT_DIR=_git/$1/.git

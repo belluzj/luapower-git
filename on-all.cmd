@@ -17,7 +17,12 @@ set _GIT_DIR=
 goto end
 
 :usage
-	echo usage: %0 ^<command args...^>
+	echo.
+	echo USAGE: %0 ^<command args...^>
+	echo.
+	echo Calls ^<command args ...^> for each project, with GIT_DIR and PROJECT env vars
+	echo set appropriately every time.
+	echo.
 goto end
 
 :end
