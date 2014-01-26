@@ -26,7 +26,7 @@ This brings in the `clone` and `remove` commands:
 	> clone
 
 	USAGE:
-		clone <package> [remote | url]    clone a package
+		clone <package> [origin | url]    clone a package
 		clone --list                      list uncloned packages
 		clone --all                       clone all packages
 
