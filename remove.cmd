@@ -1,4 +1,5 @@
 @echo off
+setlocal
 rem uninstall a package: remove all the files, any empty directories left behind and the git repo.
 
 if [%1] == [] goto usage
@@ -11,15 +12,15 @@ rd /S /Q _git\%1
 goto end
 
 :remove_file
-set FILE=%1
-set FILE=%FILE:/=\%
-del %FILE%
+set file=%1
+set file=%file:/=\%
+del %file%
 goto end
 
 :remove_empty_dir
-set FILE=%~dp1
-set FILE=%FILE:/=\%
-rd %FILE% 2>nul
+set file="%~dp1"
+set file=%file:/=\%
+rd %file% 2>nul
 goto end
 
 :not_cloned

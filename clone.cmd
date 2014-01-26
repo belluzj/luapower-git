@@ -1,4 +1,5 @@
 @echo off
+setlocal
 rem clone a package (or all packages) from remote, or list uncloned packages
 
 if [%1] == [] goto usage
@@ -7,35 +8,31 @@ if [%1] == [--list] goto list_uncloned
 
 if exist _git/%1/.git/ goto already_cloned
 
-set _origin=
-set _url=
 if [%2] == [] (
 	if not exist _git/%1.origin goto unknown_origin
 	for /f "delims=" %%o in (_git/%1.origin) do (
 		if not exist _git/%%o.baseurl goto unknown_origin
-		for /f "delims=" %%u in (_git/%%o.baseurl) do set _url=%%u%1
+		for /f "delims=" %%u in (_git/%%o.baseurl) do set url=%%u%1
 	)
 ) else (
 	if exist _git/%2.baseurl (
-		for /f "delims=" %%s in (_git/%2.baseurl) do set _url=%%s%1
+		for /f "delims=" %%s in (_git/%2.baseurl) do set url=%%s%1
 	) else (
-		set _url=%2
+		set url=%2
 	)
 )
 
 md _git\%1
-set _GIT_DIR=%GIT_DIR%
 set GIT_DIR=_git/%1/.git
 
 git init
 git config --local core.worktree ../../..
 git config --local core.excludesfile %1.exclude
-git remote add origin %_url%
+git remote add origin %url%
 git fetch
 git branch --track master origin/master
 git checkout
 
-set GIT_DIR=%_GIT_DIR%
 goto end
 
 :clone_all
@@ -47,9 +44,9 @@ for %%f in (_git/*.origin) do call :check_uncloned %%f
 goto end
 
 :check_uncloned
-set _s=%1
-set _s=%_s:.origin=%
-if not exist _git/%_s%/.git echo %_s%
+set s=%1
+set s=%s:.origin=%
+if not exist _git/%s%/.git echo %s%
 goto end
 
 :usage
