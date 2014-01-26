@@ -33,8 +33,8 @@ This brings in the `clone` and `remove` commands:
 > __NOTE:__ In Linux, the command is `./clone.sh`. They're all like that.
 
 > Tip: You can clone repos from any location, as long as they have the proper file/directory layout.
-In case you have many repos in a common remote location, write the base url of that location
-(without trailing slash) in a file called `_git/foo.remote` and then clone using `clone <package> foo`.
+In case you have many repos in a common remote location, write the base url of that location (with trailing slash)
+in a file called `_git/foo.baseurl` and then clone using `clone <package> foo`.
 
 	> remove
 
