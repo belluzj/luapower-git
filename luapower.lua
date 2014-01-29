@@ -974,6 +974,10 @@ local function link(text, url) --a link object to be used in json (url is option
 	return {text, url}
 end
 
+local function req_link(text, url) --a link object to be used in json
+	return url and {text, url} or nil
+end
+
 local function module_name_cmp(a, b) --comparison function for table.sort() for modules: sorts built-ins first
 	if builtin_modules[a] == builtin_modules[b] then
 		--if a and be are in the same class, compare their names
@@ -1012,9 +1016,9 @@ local function package_record(package)
 		if docs(package)[mod] then
 			local tags = module_tags(package, mod)
 			modt[mod] = {
-				source_link = link('source', module_source_url(package, mod)),
-				test_link = tags.test_module and link('test', module_doc_url(package, tags.test_module)),
-				demo_link = tags.demo_module and link('demo', module_doc_url(package, tags.demo_module)),
+				source_link = req_link('source', module_source_url(package, mod)),
+				test_link = tags.test_module and req_link('test', module_doc_url(package, tags.test_module)),
+				demo_link = tags.demo_module and req_link('demo', module_doc_url(package, tags.demo_module)),
 				mdep_links = module_dep_links(package, mod),
 				pdep_links = package_dep_links(package, mod),
 			}
