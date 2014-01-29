@@ -55,7 +55,7 @@ export GIT_DIR=_git/$1/.git
 
 git init
 git config -f $GIT_DIR/config core.worktree ../../..
-git config -f $GIT_DIR/config core.excludesfile _git/$1.exclude
+git config -f $GIT_DIR/config core.excludesfile $1.exclude
 git remote add origin $url
 git fetch
 git branch --track master origin/master
