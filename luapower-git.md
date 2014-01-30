@@ -141,7 +141,8 @@ The rest you can learn from the tool itself:
 
 ## Building all C libraries
 
-	> build-all
+	> cd csrc
+	> build --all
 
 This builds all packages that have a build script in the right order (pretty fast too).
 

@@ -1,1 +1,0 @@
-g++ -O2 -s -static-libgcc -static-libstdc++ -fPIC "$@"
