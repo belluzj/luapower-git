@@ -1,0 +1,10 @@
+*
+!/*.cmd
+!/*.sh
+/luajit.cmd
+/wluajit.cmd
+/luajit.sh
+!/_git/
+!/_git/**
+!/luapower*
+
