@@ -18,8 +18,10 @@ to set up, and that is where [luapower-git] comes in.
 
 First, let's git it:
 
-	> git clone ssh://git@github.com/luapower/luapower-git luapower
+	> git clone https://github.com/luapower/luapower-git luapower
 	> cd luapower
+
+> The SSH url is `ssh://git@github.com/luapower/luapower-git`
 
 This brings in the `clone` and `remove` commands:
 
@@ -32,9 +34,13 @@ This brings in the `clone` and `remove` commands:
 
 > __NOTE:__ In Linux, the command is `./clone.sh`. They're all like that.
 
-> Tip: You can clone repos from any location, as long as they have the proper file/directory layout.
-In case you have many repos in a common remote location, write the base url of that location (with trailing slash)
-in a file called `_git/foo.baseurl` and then clone using `clone <package> foo`.
+> __NOTE:__ To clone packages via SSH instead, edit `_git/luapower.baseurl` and replace the url there with `ssh://git@github.com/luapower/`
+
+> __Tip:__ You can clone repos from any location, as long as they have the proper [directory layout][get-involved].
+
+> __Tip:__ Remote origins can be labeled to avoid typing the full url every time when cloning.
+Create a file named `_git/foo.baseurl`, write the base url (with traling slash) in it, and then clone
+with `clone <package> foo`.
 
 	> remove
 
