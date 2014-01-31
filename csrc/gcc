@@ -1,0 +1,2 @@
+# gcc wrapper used by builds driven by build.sh: use it to intercept/change gcc options, etc.
+$GCC "$@"

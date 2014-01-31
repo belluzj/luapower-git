@@ -1,4 +1,5 @@
-# build all C packages in order
+#!/bin/sh
+# list packages in the order in which they should be built
 
 indep_packages="
 blur
@@ -52,15 +53,6 @@ harfbuzz
 
 packages="$indep_packages $luajit_packages $zlib_packages $png_packages $ucdn_packages"
 
-[ "$OSTYPE" = "msys" ] && platform=mingw32 || platform=linux32
-
-mkdir -p bin/linux32 bin/linux32/clib bin/linux32/lua
-
-for package in $packages; do
-	[ -f "csrc/$package/build-$platform.sh" ] && (
-		echo
-		echo "$package --------------------------------------------"
-		echo
-		cd "csrc/$package" && ./build-$platform.sh
-	)
+for p in $packages; do
+    echo $p
 done

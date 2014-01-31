@@ -1,3 +1,0 @@
-ln -sf "$(g++ -print-file-name=libstdc++.a)"
-g++ -O2 -s -static-libgcc -static-libstdc++ "$@"
-rm -f libstdc++.a
