@@ -1175,6 +1175,7 @@ local blacklisted_parents = {
 	--external doc
 	socket=1,
 	lpeg=1,
+	lpeg2=1,
 	lexers=1,
 	--single-page doc
 	cplayer=1,
