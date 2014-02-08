@@ -730,6 +730,8 @@ end)
 
 --analytic info for a package
 local package_type = memoize(function(package)
+	--NOTE: the presence of a csrc dir doesn't automatically mean the package is a C package,
+	--but this is only an ambiguity for packages that don't have Lua modules of any kind (which we don't have right now).
 	local has_c = csrc_dir(package) and true or false
 	local has_mod = next(modules(package)) and true or false
 	local has_mod_lua = false
