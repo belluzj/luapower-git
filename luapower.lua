@@ -411,7 +411,6 @@ local function is_module(mod)
 		or mod:match '_demo$'
 		or mod:match'_benchmark$'
 		or mod:match'_app$'
-		or mod:match'^lexers%.' --TODO: these are not yet modules (they depend on their environment)
 	)
 end
 
