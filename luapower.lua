@@ -1054,9 +1054,13 @@ local function write_package_db(db)
 	pp.fwrite(PACKAGES_LSON, db, '\t', {})
 end
 
+--rebuild the package db: all known packages must be installed for this to work
 local function rebuild_package_db()
 	local db = {}
-	for package in pairs(installed_packages()) do
+	for package in pairs(known_packages()) do
+		if not installed_packages()[package] then
+			error(string.format('package %s is not installed.', package))
+		end
 		print(package..'...')
 		db[package] = package_record(package)
 	end
@@ -1072,18 +1076,20 @@ local package_db = memoize(function()
 	return cjson.decode(glue.readfile(PACKAGES_JSON))
 end)
 
---update a package in the json file and rewrite the file
+--update a package (or all installed packages) in the json file and rewrite the file
 local function update_package_db(package)
+	local cjson = require'cjson'
+	local db = package_db()
 	if package then
-		local cjson = require'cjson'
-		local db = package_db()
 		db[package] = package_record(package)
-		write_package_db(db)
 	else
-		rebuild_package_db()
+		for package in pairs(installed_packages()) do
+			print(package..'...')
+			db[package] = package_record(package)
+		end
 	end
+	write_package_db(db)
 end
-
 
 --consistency checks
 --=========================================================================
@@ -1567,9 +1573,10 @@ add_action('multitracked', '',          'files tracked by multiple packages', ke
 add_action('untracked',    '',          'files not tracked by any package', keys_lister(untracked_files))
 
 add_section'DATABASE'
-add_action('update-db',  '[package]', 'update '..PACKAGES_JSON, package_arg(update_package_db))
+add_action('update-db',  '[package]', 'update '..PACKAGES_JSON..' from all installed packages', package_arg(update_package_db))
 add_action('update-toc', '[package]', 'update '..TOC_FILE, package_arg(update_toc_file))
 add_action('update',     '[package]', 'update both '..PACKAGES_JSON..' and '..TOC_FILE, package_arg(update_package))
+add_action('rebuild-db', '',          'rebuild '..PACKAGES_JSON..' (all packages must be installed)', rebuild_package_db)
 
 add_section'DEPENDENCIES'
 add_action('requires', '<module>', 'direct module requires', keys_lister(module_requires))
