@@ -1573,10 +1573,11 @@ add_action('multitracked', '',          'files tracked by multiple packages', ke
 add_action('untracked',    '',          'files not tracked by any package', keys_lister(untracked_files))
 
 add_section'DATABASE'
-add_action('update-db',  '[package]', 'update '..PACKAGES_JSON..' from all installed packages', package_arg(update_package_db))
+add_action('update-db',  '[package]', 'update '..PACKAGES_JSON, package_arg(update_package_db))
 add_action('update-toc', '[package]', 'update '..TOC_FILE, package_arg(update_toc_file))
 add_action('update',     '[package]', 'update both '..PACKAGES_JSON..' and '..TOC_FILE, package_arg(update_package))
-add_action('rebuild-db', '',          'rebuild '..PACKAGES_JSON..' (all packages must be installed)', rebuild_package_db)
+add_action('rebuild-db', '',          'rebuild '..PACKAGES_JSON,
+													rebuild_package_db)
 
 add_section'DEPENDENCIES'
 add_action('requires', '<module>', 'direct module requires', keys_lister(module_requires))

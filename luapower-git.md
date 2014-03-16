@@ -127,6 +127,7 @@ The rest you can learn from the tool itself:
 		update-db [package]            update _site/packages.json
 		update-toc [package]           update _site/toc.md
 		update [package]               update both _site/packages.json and _site/toc.md
+		rebuild-db                     rebuild _site/packages.json
 
 	DEPENDENCIES
 
