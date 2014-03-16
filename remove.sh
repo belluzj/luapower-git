@@ -36,7 +36,7 @@ done
 for file in $files; do
 	echo "$(dirname "$file")"
 done | uniq | while read dir; do
-	[ "$dir" != "." ] && /bin/rmdir -p --ignore-fail-on-non-empty "$dir"
+	[ "$dir" != "." ] && /bin/rmdir -p "$dir" 2>/dev/null
 done
 
 # remove the git dir

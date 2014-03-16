@@ -207,7 +207,7 @@ local function parse_what_file(what_file)
 
 	--parse the first line which has the format: '<realname> <version> from <url> (<license>)'
 	local s = assert(f:read'*l', 'invalid WHAT file '.. what_file)
-	t.realname, t.version, t.url, t.license = s:match('^%s*(.-)%s+(.-)%s+from%s+(.-)%s+%((.*)%)$')
+	t.realname, t.version, t.url, t.license = s:match('^%s*(.-)%s+(.-)%s+from%s+(.-)%s+%((.*)%)')
 	if not t.realname then
 		error('invalid WHAT file '.. what_file)
 	end
