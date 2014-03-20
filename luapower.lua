@@ -1,4 +1,4 @@
---luapower reflection library (Cosmin Apreutesei, public domain).
+--luapower reflection library and update script (Cosmin Apreutesei, public domain).
 --leverages the many conventions in luapower to extract and aggregate metadata about
 --packages, modules, and documentation and perform various consistency checks.
 --it also generates and updates the list of packages and table of contents that
