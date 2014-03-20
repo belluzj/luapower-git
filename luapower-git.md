@@ -75,6 +75,10 @@ git (for a specific package) without leaving the (shared) work-tree.
 This builds all the packages that have a build script for the current platform, in the right order (pretty fast too).
 You need to set up a building [environment][building] for this to work.
 
+## Updating all packages
+
+	> on-all git pull
+
 ## Module development
 
 ### Creating a new package
