@@ -1588,7 +1588,7 @@ add_action('pall',     '<module>', 'direct and indirect package dependencies', k
 add_action('pext',     '<module>', 'direct-external package dependencies', keys_lister(module_requires_packages_ext))
 add_action('ppall',    '[package]', 'direct and indirect package dependencies', keys_lister(package_requires_packages_all))
 add_action('ppext',    '[package]', 'direct-external package dependencies', keys_lister(package_requires_packages_ext))
-add_action('cdeps',    '[package]', 'direct and indirect C dependencies', keys_lister(c_deps))
+add_action('cdeps',    '[package]', 'direct and indirect C dependencies', package_lister(c_deps, list_keys, enum_keys))
 add_action('rrev',     '<module>', 'all modules that require a module', keys_lister(module_required_all))
 
 local function run(action, ...)
