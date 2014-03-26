@@ -5,5 +5,10 @@
 /luajit.sh
 !/_git/
 !/_git/**
-!/luapower*
+!/csrc/
+!/csrc/*.sh
+!/csrc/*.cmd
+!/csrc/gcc
+!/csrc/g++
 
+!/luapower*
