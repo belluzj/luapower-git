@@ -1,24 +1,32 @@
 #!/bin/sh
-# build a package for the host platform using our own gcc and g++ wrappers
+# build wrapper that allows using a different compiler and adding C/C++ flags.
 
-[ "$1" ] && package="$1" || { echo "usage: $0 <package> | --all [gcc / g++ options...]"; exit 1; }
+[ "$1" ] && package="$1" || { 
+    echo "usage: [CC=...] [CXX=...] [CFLAGS=...] [CXXFLAGS=...] [PLATFORM=...] $0 <package> | --all"
+    exit 1 
+}
 shift
 
-platform="$(./platform.sh)"
-export PLATFORM=$platform
-export BINDIR="$PWD/../bin/$platform"
-export GCC="$(which gcc)"
-export GPP="$(which g++)"
+[ "$PLATFORM" ] || PLATFORM="$(./platform.sh)"
+[ "$CC" ] || CC="$(which gcc)"
+[ "$CXX" ] || CXX="$(which g++)"
+
+export CC_1="$CC"
+export CXX_1="$CXX"
+export CFLAGS_1="$CFLAGS"
+export CXXFLAGS_1="$CXXFLAGS"
 export PATH="$PWD:$PATH" # use local gcc and g++ wrappers
 
 build() {
-    [ -f $package/build-$platform.sh ] || return
+    [ -f $package/build-$PLATFORM.sh ] || return
     cd $package
-    ./build-$platform.sh "$@"
+    ./build-$PLATFORM.sh "$@"
     cd ..
 }
 
 [ "$package" == "--all" ] && {
+    echo "Building all for $PLATFORM..."
+    echo
     for package in `./packages.sh`; do
 	echo
 	echo "$package --------------------------------------------"

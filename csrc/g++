@@ -1,2 +1,2 @@
 # g++ wrapper used by builds driven by build.sh: use it to intercept/change g++ options, etc.
-$GPP "$@"
+$CXX_1 $CXXFLAGS_1 "$@"

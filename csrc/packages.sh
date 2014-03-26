@@ -2,7 +2,7 @@
 # list packages in the order in which they should be built
 
 indep_packages="
-blur
+boxblur
 chipmunk
 clipper
 expat
@@ -29,6 +29,7 @@ freetype
 luajit_packages="
 lfs
 lpeg
+lpeg2
 cjson
 socket
 struct
