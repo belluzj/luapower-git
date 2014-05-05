@@ -20,11 +20,17 @@ local notrack_modules = {string=1, table=1, coroutine=1, package=1, io=1, math=1
 
 local modules = {} --{module = {dep1 = true, ...}}
 local parents = {}
+
 local require_ = require
+function pcall_require(m)
+	local ok, m = pcall(require_, m)
+	if not ok then print(string.format('require error: %s', m)) end
+	return ok and m or nil
+end
 
 function require(m)
 	if notrack_modules[m] then
-		return require_(m)
+		return pcall_require(m)
 	end
 	modules[m] = modules[m] or {}
 	local parent = parents[#parents]
@@ -32,7 +38,7 @@ function require(m)
 		modules[parent][m] = true
 	end
 	table.insert(parents, m)
-	local ret = require_(m)
+	local ret = pcall_require(m)
 	table.remove(parents)
 	return ret
 end
@@ -962,7 +968,7 @@ local doc_categories = memoize(function(separator)
 	end)
 end)
 
---require'pp'.pp(doc_category('oo'))
+--require'pp'(doc_category('oo'))
 --os.exit(1)
 
 --building and updating the package database
@@ -1051,7 +1057,7 @@ local function write_package_db(db)
 	local cjson = require'cjson'
 	glue.writefile(PACKAGES_JSON, cjson.encode(db))
 	local pp = require'pp'
-	pp.fwrite(PACKAGES_LSON, db, '\t', {})
+	pp.save(PACKAGES_LSON, db, '\t', {})
 end
 
 --rebuild the package db: all known packages must be installed for this to work
