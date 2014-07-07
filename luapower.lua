@@ -149,6 +149,11 @@ local function lua_module_name(path)
 	return path:gsub('/', '.'):match('(.-)%.lua$')
 end
 
+--path/*.dasl -> dasl module name
+local function dasl_module_name(path)
+	return path:gsub('/', '.'):match('(.-)%.dasl$')
+end
+
 --path/*.dll|.so -> C module name
 local function c_module_name(path)
 	local ext = package.cpath:match'%?%.([^;]+)'
@@ -157,7 +162,7 @@ local function c_module_name(path)
 end
 
 local function module_name(path)
-	return lua_module_name(path) or c_module_name(path)
+	return lua_module_name(path) or dasl_module_name(path) or c_module_name(path)
 end
 
 --'module_submodule' -> 'module'; 'module.submodule' -> 'module'
@@ -595,8 +600,21 @@ end)
 --module dependencies
 ---------------------------------------------------------------------------
 
+--modules with extensions other than Lua need a require() loader to be installed first.
+--that loader is usually in another module.
+local loader_modules = {dasl = 'dynasm'}
+
+local module_check_loader = memoize(function(mod, package)
+	package = package or module_package(mod)
+	local path = modules(package)[mod]   ; if not path then return end
+	local ext = path:match'%.(.*)$'      ; if not ext then return end
+	local loader = loader_modules[ext]   ; if not loader then return end
+	require(loader)
+end)
+
 --direct and indirect module dependencies of a module, as a table
-local module_requires_all = memoize(function(mod)
+local module_requires_all = memoize(function(mod, package)
+	module_check_loader(mod, package)
 	local t = {}
 	local function add_deps(mod)
 		for dep in pairs(module_requires(mod)) do
@@ -609,7 +627,8 @@ local module_requires_all = memoize(function(mod)
 end)
 
 --direct and indirect module dependencies of a module, as a tree
-local module_requires_tree = memoize(function(mod)
+local module_requires_tree = memoize(function(mod, package)
+	module_check_loader(mod, package)
 	local function add_deps(pnode)
 		for dep in pairs(module_requires(pnode.name)) do
 			local node = {name = dep}
@@ -624,6 +643,7 @@ end)
 --direct-external module dependencies of a module
 local module_requires_ext = memoize(function(mod, package)
 	package = package or module_package(mod)
+	module_check_loader(mod, package)
 	local t = {}
 	local function add_deps(mod)
 		for dep in pairs(module_requires(mod)) do
@@ -728,6 +748,7 @@ local module_tags = memoize(function(package, mod)
 	return {
 		lang =
 			lua_module_name(mod_path) and 'Lua'
+			or dasl_module_name(mod_path) and 'Lua/ASM'
 			or c_module_name(mod_path) and 'C',
 		demo_module = scripts(package)[mod..'_demo'] and mod..'_demo',
 		test_module = scripts(package)[mod..'_test'] and mod..'_test',
@@ -744,12 +765,13 @@ local package_type = memoize(function(package)
 	local has_mod_c = false
 	local has_ffi = false
 	for mod in pairs(modules(package)) do
-		if module_tags(package, mod).lang == 'C' then
+		local lang = module_tags(package, mod).lang
+		if lang == 'C' then
 			has_mod_c = true
 		else
 			has_mod_lua = true
 		end
-		if module_requires_all(mod).ffi then
+		if module_requires_all(mod, package).ffi then
 			has_ffi = true
 			break
 		end
@@ -758,7 +780,6 @@ local package_type = memoize(function(package)
 	assert(not has_mod_c or has_c) --Lua/C modules without source?
 	return has_ffi and 'Lua+ffi' or has_mod and (has_mod_c and 'Lua/C' or 'Lua') or has_c and 'C' or 'other'
 end)
-
 
 --web links
 ---------------------------------------------------------------------------
@@ -776,7 +797,10 @@ end)
 
 --url for viewing a module's (or script's) source file
 local module_source_url = memoize(function(package, mod)
-	if modules(package)[mod] and module_tags(package, mod).lang ~= 'Lua' then return end
+	if modules(package)[mod] then
+		local lang = module_tags(package, mod).lang
+		if not (lang == 'Lua' or lang == 'Lua/ASM') then return end
+	end
 	local path = modules(package)[mod] or scripts(package)[mod]
 	return 'https://github.com/luapower/' .. package .. '/blob/master/' .. path
 end)
@@ -1454,7 +1478,7 @@ local function describe_package(package)
 			local mt = module_tags(package, mod)
 			local deps = module_requires_ext(mod, package)
 			local flags = (mt.test_module and 'T' or '') .. (mt.demo_module and 'D' or '')
-			print(string.format('%-30s %-6s %-4s %s',
+			print(string.format('%-30s %-8s %-4s %s',
 				('  '):rep(level) .. '  ' .. mod, mt.lang, flags, enum_keys(deps, module_name_cmp)))
 		end)
 
